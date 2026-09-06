@@ -1,0 +1,36 @@
+import type { Metadata } from "next";
+import "./globals.css";
+import { AuthProvider } from "@/lib/auth-context";
+
+export const metadata: Metadata = {
+  title: {
+    default: "StudyBridge",
+    template: "%s | StudyBridge",
+  },
+  description:
+    "StudyBridge connects students, agencies, and universities for a smoother study-abroad journey.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="h-full antialiased">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-surface text-on-surface">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
+    </html>
+  );
+}
