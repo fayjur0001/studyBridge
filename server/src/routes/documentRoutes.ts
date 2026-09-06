@@ -6,6 +6,7 @@ import {
   listMyDocuments,
   uploadMyDocument,
   deleteMyDocument,
+  viewMyDocument,
   reviewDocument,
 } from "@/controllers/documentController";
 
@@ -20,6 +21,7 @@ router.post(
   asyncHandler(uploadMyDocument)
 );
 router.delete("/:id", requireAuth, requireRole("student"), asyncHandler(deleteMyDocument));
+router.get("/:id/file", requireAuth, requireRole("student"), asyncHandler(viewMyDocument));
 
 router.patch(
   "/:id/review",

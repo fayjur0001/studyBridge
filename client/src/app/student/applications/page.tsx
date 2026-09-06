@@ -23,6 +23,7 @@ export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [stats, setStats] = useState<ApplicationStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -35,6 +36,7 @@ export default function ApplicationsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+  const visibleApplications = applications.filter((app) => `${app.university.name} ${app.program.name} ${app.status}`.toLowerCase().includes(searchQuery.toLowerCase().trim()));
 
   return (
     <>
@@ -46,13 +48,12 @@ export default function ApplicationsPage() {
 <div className="flex items-center gap-4 flex-1">
 <div className="relative w-full max-w-md group">
 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
-<input className="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-xl font-body-md text-body-md focus:ring-2 focus:ring-primary-container focus:bg-white transition-all" placeholder="Search applications, universities..." type="text" />
+<input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-xl font-body-md text-body-md focus:ring-2 focus:ring-primary-container focus:bg-surface-container-lowest transition-all" placeholder="Search applications, universities..." type="text" />
 </div>
 </div>
 <div className="flex items-center gap-6">
 <div className="flex items-center gap-4 text-on-surface-variant">
 <button className="material-symbols-outlined cursor-pointer transition-transform duration-200 active:scale-95 hover:text-primary" data-icon="notifications">notifications</button>
-<button className="material-symbols-outlined cursor-pointer transition-transform duration-200 active:scale-95 hover:text-primary" data-icon="help">help</button>
 </div>
 <div className="h-8 w-[1px] bg-outline-variant"></div>
 <div className="flex items-center gap-3 cursor-pointer group">
@@ -120,7 +121,7 @@ export default function ApplicationsPage() {
 </div>
 </div>
 
-<div className="bg-white rounded-[24px] ambient-shadow overflow-hidden border border-outline-variant/20">
+<div className="bg-surface-container-lowest rounded-[24px] ambient-shadow overflow-hidden border border-outline-variant/20">
 <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center">
 <h3 className="font-headline-sm text-headline-sm text-on-surface">Your Applications</h3>
 </div>
@@ -144,7 +145,7 @@ export default function ApplicationsPage() {
   </tr>
 )}
 
-{applications.map((app) => (
+{visibleApplications.map((app) => (
 <tr key={app.id} className="hover:bg-surface-container-low/30 transition-colors group">
 <td className="px-8 py-6">
 <div className="flex items-center gap-4">
@@ -172,6 +173,9 @@ export default function ApplicationsPage() {
 </td>
 </tr>
 ))}
+{!loading && applications.length > 0 && visibleApplications.length === 0 && (
+  <tr><td colSpan={4} className="px-8 py-12 text-center text-on-surface-variant font-body-md">No applications match your search.</td></tr>
+)}
 </tbody>
 </table>
 </div>

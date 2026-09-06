@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import MessagingView from "@/components/messaging/MessagingView";
 import { useAuth } from "@/lib/auth-context";
 
 export default function MessagingPage() {
   const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <>
@@ -16,7 +18,7 @@ export default function MessagingPage() {
           <div className="flex items-center gap-6">
             <div className="flex items-center bg-surface-container-low px-4 py-2 rounded-full w-96">
               <span className="material-symbols-outlined text-outline">search</span>
-              <input className="bg-transparent border-none focus:ring-0 text-body-md font-body-md w-full placeholder:text-outline-variant" placeholder="Search conversations..." type="text" />
+              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="bg-transparent border-none focus:ring-0 text-body-md font-body-md w-full placeholder:text-outline-variant" placeholder="Search conversations..." type="text" />
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -26,7 +28,7 @@ export default function MessagingPage() {
           </div>
         </header>
 
-        <MessagingView />
+        <MessagingView searchQuery={searchQuery} />
       </main>
     </>
   );

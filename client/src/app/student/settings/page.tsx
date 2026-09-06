@@ -303,7 +303,7 @@ export default function StudentSettingsPage() {
 </div>
 </section>
 
-<section className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-card-gap">
+<section id="notifications" className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-card-gap">
 
 <div className="col-span-1 md:col-span-3 flex items-center gap-3">
 <span className="material-symbols-outlined text-secondary bg-secondary-fixed p-2 rounded-xl" data-icon="notifications_active" style={{fontVariationSettings: "'FILL' 1"}}>notifications_active</span>

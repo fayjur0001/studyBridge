@@ -72,6 +72,32 @@ export async function deleteMyDocument(req: Request, res: Response) {
   res.status(204).send();
 }
 
+// Documents are deliberately served through an authenticated endpoint rather
+// than exposing the student's vault through a guessable static upload URL.
+export async function viewMyDocument(req: Request, res: Response) {
+  const doc = await db.query.documents.findFirst({
+    where: and(eq(documents.id, req.params.id), eq(documents.studentId, req.user!.id)),
+  });
+  if (!doc) throw new AppError("Document not found.", 404);
+
+  const uploadRoot = path.resolve(env.uploadDir);
+  const fullPath = path.resolve(uploadRoot, doc.filePath);
+  if (!fullPath.startsWith(`${uploadRoot}${path.sep}`)) throw new AppError("Invalid document path.", 400);
+
+  try {
+    await fs.access(fullPath);
+  } catch {
+    throw new AppError("Document file is no longer available.", 404);
+  }
+
+  res.type(doc.mimeType ?? "application/octet-stream");
+  res.setHeader(
+    "Content-Disposition",
+    `${req.query.download === "true" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`
+  );
+  res.sendFile(fullPath);
+}
+
 const reviewSchema = z.object({
   status: z.enum(["approved", "rejected"]),
   reviewNote: z.string().optional(),

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { Application } from "@/lib/types";
+import { Application, Program, StudentDocument } from "@/lib/types";
+import { useLocale } from "@/lib/locale-context";
 
 interface ApplicationStats {
   total: number;
@@ -27,20 +28,32 @@ export default function StudentDashboardPage() {
   const router = useRouter();
   const [stats, setStats] = useState<ApplicationStats | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [documents, setDocuments] = useState<StudentDocument[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [messagingAgencyId, setMessagingAgencyId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { t } = useLocale();
 
   useEffect(() => {
     api.get<ApplicationStats>("/api/applications/stats").then(setStats).catch(() => {});
     api
       .get<{ data: Application[] }>("/api/applications")
-      .then((res) => setApplications(res.data.slice(0, 2)))
+      .then((res) => setApplications(res.data))
       .catch(() => {});
+    api.get<{ data: StudentDocument[] }>("/api/documents").then((res) => setDocuments(res.data)).catch(() => {});
+    api.get<{ data: Program[] }>("/api/programs?limit=50", { auth: false }).then((res) => setPrograms(res.data)).catch(() => {});
     api
       .get<{ agencies: Agency[] }>("/api/student/me")
       .then((res) => setAgencies(res.agencies ?? []))
       .catch(() => {});
   }, []);
+
+  const term = searchQuery.trim().toLowerCase();
+  const applicationMatches = term ? applications.filter((app) => `${app.university.name} ${app.program.name} ${app.status}`.toLowerCase().includes(term)).slice(0, 4) : [];
+  const documentMatches = term ? documents.filter((doc) => `${doc.fileName} ${doc.type} ${doc.status}`.toLowerCase().includes(term)).slice(0, 4) : [];
+  const programMatches = term ? programs.filter((program) => `${program.name} ${program.field ?? ""} ${program.degreeLevel}`.toLowerCase().includes(term)).slice(0, 4) : [];
+  const hasSearchMatches = applicationMatches.length + documentMatches.length + programMatches.length > 0;
 
   async function handleMessageAgency(agency: Agency) {
     setMessagingAgencyId(agency.userId);
@@ -67,19 +80,22 @@ export default function StudentDashboardPage() {
 <div className="flex items-center gap-6 flex-1">
 <div className="relative w-full max-w-md group">
 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-<input className="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full font-body-md text-body-md focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search programs, documents, or status..." type="text" />
+<input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full font-body-md text-body-md focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search programs, documents, or status..." type="search" aria-label="Search your programs, documents, and applications" />
+{term && (
+  <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] max-h-80 overflow-y-auto rounded-2xl bg-surface-container-lowest shadow-xl border border-outline-variant/20 p-2 z-50">
+    {!hasSearchMatches && <p className="px-3 py-4 text-on-surface-variant font-body-md">No results found.</p>}
+    {applicationMatches.map((app) => <Link onClick={() => setSearchQuery("")} key={`app-${app.id}`} href={`/student/applications/${app.id}`} className="block rounded-xl px-3 py-2 hover:bg-surface-container-low"><p className="font-semibold text-on-surface">{app.program.name}</p><p className="text-label-md text-outline">Application · {app.university.name}</p></Link>)}
+    {documentMatches.map((doc) => <Link onClick={() => setSearchQuery("")} key={`doc-${doc.id}`} href="/student/documents" className="block rounded-xl px-3 py-2 hover:bg-surface-container-low"><p className="font-semibold text-on-surface">{doc.fileName}</p><p className="text-label-md text-outline">Document · {doc.type}</p></Link>)}
+    {programMatches.map((program) => <Link onClick={() => setSearchQuery("")} key={`program-${program.id}`} href={`/universities/${program.universityId}`} className="block rounded-xl px-3 py-2 hover:bg-surface-container-low"><p className="font-semibold text-on-surface">{program.name}</p><p className="text-label-md text-outline">Program · {program.degreeLevel}</p></Link>)}
+  </div>
+)}
 </div>
 </div>
 <div className="flex items-center gap-6">
-<div className="flex items-center gap-4">
-<button className="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
-<span className="material-symbols-outlined">notifications</span>
-</button>
-<button className="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
-<span className="material-symbols-outlined">help</span>
-</button>
+<div className="flex items-center gap-1 text-on-surface-variant">
+<Link href="/student/settings#notifications" title="Notification settings" aria-label="Notification settings" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">notifications</span></Link>
+<Link href="/student/ai-tools/documentation" title="Help and documentation" aria-label="Help and documentation" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">help_outline</span></Link>
 </div>
-<div className="h-8 w-[1px] bg-outline-variant mx-2"></div>
 <div className="flex items-center gap-3 cursor-pointer group">
 <div className="text-right hidden sm:block">
 <p className="font-label-md text-label-md font-bold text-on-surface">{user?.fullName ?? "..."}</p>
@@ -96,7 +112,7 @@ export default function StudentDashboardPage() {
 <section className="grid grid-cols-12 gap-card-gap mb-12">
 <div className="col-span-12 lg:col-span-8 premium-card relative overflow-hidden p-container-padding bg-gradient-to-br from-primary to-primary-container text-on-primary">
 <div className="relative z-10">
-<h2 className="font-headline-lg text-headline-lg mb-2">Welcome back, {user?.fullName?.split(" ")[0] ?? ""}!</h2>
+<h2 className="font-headline-lg text-headline-lg mb-2">{t("welcomeBack")}, {user?.fullName?.split(" ")[0] ?? ""}!</h2>
 <p className="text-primary-fixed-dim max-w-md mb-8">You&apos;re making great progress on your international applications. Complete your language proficiency tests to boost your eligibility.</p>
 </div>
 <div className="absolute right-0 bottom-0 w-64 h-full pointer-events-none opacity-20 transform translate-x-12 translate-y-12">
@@ -151,7 +167,7 @@ export default function StudentDashboardPage() {
 
 <div className="col-span-12 xl:col-span-8 premium-card p-container-padding">
 <div className="flex justify-between items-center mb-8">
-<h3 className="font-headline-sm text-headline-sm text-on-surface">Application Timeline</h3>
+<h3 className="font-headline-sm text-headline-sm text-on-surface">{t("applicationTimeline")}</h3>
 <Link href="/student/applications" className="text-primary font-label-md flex items-center gap-1 hover:underline">
                                 View all applications
                                 <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -163,7 +179,7 @@ export default function StudentDashboardPage() {
   <p className="text-on-surface-variant font-body-md pl-16">No applications yet — browse universities to get started.</p>
 )}
 
-{applications.map((app) => (
+{applications.slice(0, 2).map((app) => (
 <div key={app.id} className="relative pl-16">
 <div className="absolute left-0 top-0 w-12 h-12 rounded-full bg-primary flex items-center justify-center z-10 shadow-lg">
 <span className="material-symbols-outlined text-on-primary">hourglass_empty</span>

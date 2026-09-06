@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, API_BASE_URL, getAccessToken, tryRefresh } from "@/lib/api";
 import { StudentDocument, DocumentStatus } from "@/lib/types";
 
 const DOCUMENT_TYPES = [
@@ -29,6 +29,7 @@ export default function DocumentVaultPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadType, setUploadType] = useState(DOCUMENT_TYPES[0]);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function load() {
@@ -61,14 +62,55 @@ export default function DocumentVaultPage() {
   }
 
   async function handleDelete(id: string) {
-    await api.delete(`/api/documents/${id}`).catch(() => {});
-    load();
+    setError(null);
+    try {
+      await api.delete(`/api/documents/${id}`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not delete this document.");
+    }
+  }
+
+  async function openDocument(doc: StudentDocument, download = false) {
+    setError(null);
+    const previewWindow = download ? null : window.open("", "_blank");
+    try {
+      let token = getAccessToken();
+      let response = await fetch(`${API_BASE_URL}/api/documents/${doc.id}/file${download ? "?download=true" : ""}`, {
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (response.status === 401 && await tryRefresh()) {
+        token = getAccessToken();
+        response = await fetch(`${API_BASE_URL}/api/documents/${doc.id}/file${download ? "?download=true" : ""}`, {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+      }
+      if (!response.ok) throw new Error("Could not open this document.");
+      const url = URL.createObjectURL(await response.blob());
+      if (download) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = doc.fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        if (previewWindow) previewWindow.location.href = url;
+        else window.open(url, "_blank", "noopener,noreferrer");
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    } catch (err) {
+      previewWindow?.close();
+      setError(err instanceof Error ? err.message : "Could not open this document.");
+    }
   }
 
   const categories = documents.reduce<Record<string, number>>((acc, doc) => {
     acc[doc.type] = (acc[doc.type] ?? 0) + 1;
     return acc;
   }, {});
+  const visibleDocuments = documents.filter((doc) => `${doc.fileName} ${doc.type} ${doc.status}`.toLowerCase().includes(searchQuery.toLowerCase().trim()));
 
   return (
     <>
@@ -80,7 +122,7 @@ export default function DocumentVaultPage() {
 <div className="flex items-center gap-8 flex-1">
 <div className="relative w-full max-w-md">
 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-<input className="w-full pl-10 pr-4 py-2 bg-surface-container-low rounded-full border-none focus:ring-2 focus:ring-primary/20 font-body-md text-body-md" placeholder="Search academic documents..." type="text" />
+<input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="w-full pl-10 pr-4 py-2 bg-surface-container-low rounded-full border-none focus:ring-2 focus:ring-primary/20 font-body-md text-body-md" placeholder="Search academic documents..." type="text" />
 </div>
 </div>
 <div className="flex items-center gap-6">
@@ -163,7 +205,7 @@ export default function DocumentVaultPage() {
   <tr><td colSpan={5} className="px-container-padding py-12 text-center text-on-surface-variant font-body-md">No documents yet.</td></tr>
 )}
 
-{documents.map((doc) => {
+{visibleDocuments.map((doc) => {
   const status = STATUS_DISPLAY[doc.status];
   return (
 <tr key={doc.id} className="hover:bg-surface-bright transition-colors group">
@@ -190,6 +232,12 @@ export default function DocumentVaultPage() {
 </td>
 <td className="px-container-padding py-5 text-right">
 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button onClick={() => openDocument(doc)} className="p-2 hover:bg-primary/5 rounded-lg text-primary" title="Preview" aria-label={`Preview ${doc.fileName}`}>
+<span className="material-symbols-outlined">visibility</span>
+</button>
+<button onClick={() => openDocument(doc, true)} className="p-2 hover:bg-primary/5 rounded-lg text-primary" title="Download" aria-label={`Download ${doc.fileName}`}>
+<span className="material-symbols-outlined">download</span>
+</button>
 <button onClick={() => handleDelete(doc.id)} className="p-2 hover:bg-error/5 rounded-lg text-error" title="Delete">
 <span className="material-symbols-outlined">delete</span>
 </button>
@@ -198,6 +246,9 @@ export default function DocumentVaultPage() {
 </tr>
   );
 })}
+{!loading && documents.length > 0 && visibleDocuments.length === 0 && (
+  <tr><td colSpan={5} className="px-container-padding py-12 text-center text-on-surface-variant font-body-md">No documents match your search.</td></tr>
+)}
 </tbody>
 </table>
 </div>

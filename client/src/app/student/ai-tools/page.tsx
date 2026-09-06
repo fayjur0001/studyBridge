@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
+import { useAuth } from "@/lib/auth-context";
+import { useLocale } from "@/lib/locale-context";
 
 export default function AIToolsHubPage() {
+  const { user } = useAuth();
+  const { t } = useLocale();
+  const [searchQuery, setSearchQuery] = useState("");
+  const matchesTool = (text: string) => text.toLowerCase().includes(searchQuery.trim().toLowerCase());
+  const hasMatches = !searchQuery.trim() || ["Personal Statement Reviewer", "Interview Simulator", "Visa Probability", "Global University Matcher"].some(matchesTool);
   return (
     <>
 <StudentSidebar />
@@ -14,24 +22,20 @@ export default function AIToolsHubPage() {
 <div className="flex items-center gap-6">
 <div className="relative w-64">
 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-<input className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-body-md focus:ring-2 focus:ring-primary/20" placeholder="Search AI tools..." type="text" />
+<input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-body-md focus:ring-2 focus:ring-primary/20" placeholder="Search AI tools..." type="search" aria-label="Search AI tools" />
 </div>
 </div>
 <div className="flex items-center gap-6">
-<div className="flex items-center gap-4 border-r border-outline-variant pr-6">
-<button className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
-<span className="material-symbols-outlined">notifications</span>
-</button>
-<button className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
-<span className="material-symbols-outlined">help</span>
-</button>
+<div className="flex items-center gap-1 text-on-surface-variant">
+<Link href="/student/settings#notifications" title="Notification settings" aria-label="Notification settings" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">notifications</span></Link>
+<Link href="/student/ai-tools/documentation" title="Help and documentation" aria-label="Help and documentation" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">help_outline</span></Link>
 </div>
 <div className="flex items-center gap-3 cursor-pointer group">
 <div className="text-right">
-<p className="font-body-md text-on-surface font-bold">Alex Sterling</p>
-<p className="text-label-md text-on-surface-variant">Global Merit Scholar</p>
+<p className="font-body-md text-on-surface font-bold">{user?.fullName ?? "Student"}</p>
+<p className="text-label-md text-on-surface-variant">Student</p>
 </div>
-<img className="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10 group-hover:ring-primary/30 transition-all" alt="A professional high-resolution headshot of a diverse male university student with a warm smile, wearing a navy blue blazer over a crisp white shirt. The background is a soft-focus academic hallway with rich wooden textures and warm light-mode ambient lighting. The visual style is premium, sharp, and corporate modern, reflecting an elite educational atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSICN8_CGmCUykCUjUMv556WvGPs_oTI-gvgQKPZ-YsGIduT21ZC2cl25GNkPUj3IAPQMUlzTRyMekSkyQVAznuaeC8qNmJRw5NcLWWdxnMA2Lr3DyuQWxVZeQXHzHE00MQIZTl6iLN8cyvNU6b6DA7k87q81WyI_ytxAUQ7BYQP_gPIGFx9Usr198196QN5trLCOZw4mm0mbtC44AkypcteIKkO_YE0JChDHAhI3EJfq2g2v-Jtrr" />
+<div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center font-bold text-primary">{user?.fullName?.[0] ?? "S"}</div>
 </div>
 </div>
 </header>
@@ -44,22 +48,22 @@ export default function AIToolsHubPage() {
 <span className="inline-block px-4 py-1.5 bg-on-primary/10 text-on-primary rounded-full font-label-md text-label-md mb-6 border border-on-primary/20">
                         AI-Powered Intelligence Hub
                     </span>
-<h2 className="font-display-lg text-display-lg text-on-primary mb-4">Elevate Your Academic Journey.</h2>
+<h2 className="font-display-lg text-display-lg text-on-primary mb-4">{t("aiToolsTitle")}</h2>
 <p className="font-body-lg text-body-lg text-primary-fixed-dim mb-8">Leverage cutting-edge neural models specifically trained for international education standards, admissions, and global student success.</p>
 <div className="flex gap-4">
-<button className="bg-secondary-container text-on-secondary-container px-6 py-3 rounded-xl font-headline-sm text-sm hover:bg-on-primary hover:text-primary transition-all duration-300">
+<a href="#tools" className="bg-secondary-container text-on-secondary-container px-6 py-3 rounded-xl font-headline-sm text-sm hover:bg-on-primary hover:text-primary transition-all duration-300">
                             Explore All Tools
-                        </button>
-<button className="border border-on-primary/30 text-on-primary px-6 py-3 rounded-xl font-headline-sm text-sm hover:bg-on-primary/10 transition-all duration-300">
+                        </a>
+<Link href="/student/ai-tools/documentation" className="border border-on-primary/30 text-on-primary px-6 py-3 rounded-xl font-headline-sm text-sm hover:bg-on-primary/10 transition-all duration-300">
                             View Documentation
-                        </button>
+                        </Link>
 </div>
 </div>
 </section>
 
-<div className="grid grid-cols-12 gap-card-gap">
+<div id="tools" className="grid grid-cols-12 gap-card-gap scroll-mt-24">
 
-<div className="col-span-12 lg:col-span-8 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col md:flex-row gap-8 items-center border border-outline-variant/30">
+{matchesTool("Personal Statement Reviewer") && <div className="col-span-12 lg:col-span-8 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col md:flex-row gap-8 items-center border border-outline-variant/30">
 <div className="w-full md:w-2/5 h-64 rounded-2xl overflow-hidden relative group">
 <img className="w-full h-full object-cover" alt="A highly detailed cinematic shot of a modern writing desk featuring a high-end minimalist laptop displaying complex text analysis graphs. A pristine leather-bound notebook and a premium fountain pen sit nearby. The lighting is soft and golden, coming from a nearby window, creating a serene, scholarly atmosphere. The color palette is composed of soft whites, deep blues, and warm wood tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBc9f1dtqS2n2wsmEGM2JUNeK_L34xeksrO8tugLynoVsWBFECJYKN-R-5JR8L7uVeF5fhtFNO5F4YNYpi1XyJLleTNoePVhi761ascPz0v83ArykXXbDXOjKtQdbdhzw3fPYIkivX03zRvwnCzy-NOay9CB0Y1Ptb99S8qkpPCLhI-EbEyVwPtzx1_BSt6VT7esI-XpFB4wTTaTs_2fXDM6C-ky_YorKAyXXpYD7CbfSDF8aZgD8Qw" />
 <div className="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent flex items-end p-6 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -81,9 +85,9 @@ export default function AIToolsHubPage() {
 </button>
 </div>
 </div>
-</div>
+</div>}
 
-<div className="col-span-12 lg:col-span-4 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col border border-outline-variant/30">
+{matchesTool("Interview Simulator") && <div className="col-span-12 lg:col-span-4 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col border border-outline-variant/30">
 <div className="w-12 h-12 bg-secondary-fixed rounded-xl flex items-center justify-center text-secondary mb-6">
 <span className="material-symbols-outlined text-2xl">record_voice_over</span>
 </div>
@@ -94,9 +98,9 @@ export default function AIToolsHubPage() {
                             Coming Soon
                         </button>
 </div>
-</div>
+</div>}
 
-<div className="col-span-12 md:col-span-6 lg:col-span-4 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col border border-outline-variant/30">
+{matchesTool("Visa Probability") && <div className="col-span-12 md:col-span-6 lg:col-span-4 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col border border-outline-variant/30">
 <div className="w-12 h-12 bg-tertiary-fixed rounded-xl flex items-center justify-center text-tertiary mb-6">
 <span className="material-symbols-outlined text-2xl">analytics</span>
 </div>
@@ -107,9 +111,9 @@ export default function AIToolsHubPage() {
                             Coming Soon
                         </button>
 </div>
-</div>
+</div>}
 
-<div className="col-span-12 md:col-span-6 lg:col-span-8 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col md:flex-row gap-8 items-center border border-outline-variant/30">
+{matchesTool("Global University Matcher") && <div className="col-span-12 md:col-span-6 lg:col-span-8 ambient-card bg-surface-container-lowest p-unit*4 rounded-[24px] flex flex-col md:flex-row gap-8 items-center border border-outline-variant/30">
 <div className="flex-1">
 <div className="flex items-center gap-3 mb-4">
 <div className="w-12 h-12 bg-primary-fixed-dim rounded-xl flex items-center justify-center text-primary">
@@ -131,7 +135,8 @@ export default function AIToolsHubPage() {
 <div className="w-full md:w-1/3 aspect-square rounded-2xl overflow-hidden shadow-inner">
 <div className="w-full h-full bg-cover bg-center transition-transform duration-700 hover:scale-110" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCxa-ZjyuTnxrHfO9SirJZ4mKdzN_KJ2DEZKRHBVyXm0H5eKQifI9NYmooyZaCBmKxKgSNmXz0ruQjnrAscANNpwfzvKJ3ab1kcWmZ_WPnSiIxhK0_x766a1H6hLV8c39mJ8gBy-PXKaPGdu559b29pXley5-bUyl9lcoZSlKNz7tTUjlTfyvDuK83Zbtgy51rwwcH3MN31DAQ1wCnpIw0D3RkeLlrj7ugl9-EOIMk1CBl_b5z_YSCR')"}}></div>
 </div>
-</div>
+</div>}
+{!hasMatches && <p className="col-span-full rounded-2xl bg-surface-container-low p-8 text-center text-on-surface-variant">No AI tools match “{searchQuery}”.</p>}
 </div>
 
 <footer className="mt-16 grid grid-cols-1 md:grid-cols-4 gap-8 py-12 border-t border-outline-variant/20">
