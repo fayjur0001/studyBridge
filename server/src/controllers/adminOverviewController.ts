@@ -62,7 +62,73 @@ export async function getAdminOverviewStats(_req: Request, res: Response) {
   });
 }
 
-// Alias used by the /admin/reports and /admin/analytics pages — same
-// underlying numbers, kept as a separate route so the frontend's two
-// pages can evolve independently without changing this response shape.
-export const getAdminReportStats = getAdminOverviewStats;
+// Dedicated data for the /admin/reports page: a fuller, filterable list of
+// real applications across the platform (not just the 6-row preview used
+// by the overview dashboard), plus the same status counts for summary cards.
+type ApplicationStatus =
+  | "draft"
+  | "submitted"
+  | "under_review"
+  | "documents_requested"
+  | "accepted"
+  | "rejected"
+  | "withdrawn";
+
+const VALID_STATUSES: ApplicationStatus[] = [
+  "draft",
+  "submitted",
+  "under_review",
+  "documents_requested",
+  "accepted",
+  "rejected",
+  "withdrawn",
+];
+
+function isApplicationStatus(value: string): value is ApplicationStatus {
+  return (VALID_STATUSES as string[]).includes(value);
+}
+
+export async function getAdminReportStats(req: Request, res: Response) {
+  const statusFilter = typeof req.query.status === "string" ? req.query.status : undefined;
+  const whereClause =
+    statusFilter && isApplicationStatus(statusFilter) ? eq(applications.status, statusFilter) : undefined;
+
+  const [
+    totalApplications,
+    submitted,
+    underReview,
+    accepted,
+    rejected,
+    withdrawn,
+    applicationRows,
+  ] = await Promise.all([
+    db.$count(applications),
+    db.$count(applications, ne(applications.status, "draft")),
+    db.$count(applications, eq(applications.status, "under_review")),
+    db.$count(applications, eq(applications.status, "accepted")),
+    db.$count(applications, eq(applications.status, "rejected")),
+    db.$count(applications, eq(applications.status, "withdrawn")),
+    db
+      .select({
+        id: applications.id,
+        status: applications.status,
+        createdAt: applications.createdAt,
+        studentName: users.fullName,
+        studentEmail: users.email,
+        programName: programs.name,
+        universityName: universities.name,
+      })
+      .from(applications)
+      .innerJoin(users, eq(users.id, applications.studentId))
+      .innerJoin(programs, eq(programs.id, applications.programId))
+      .innerJoin(universities, eq(universities.id, programs.universityId))
+      .where(whereClause)
+      .orderBy(desc(applications.createdAt))
+      .limit(100),
+  ]);
+
+  res.json({
+    applications: { total: totalApplications, submitted, underReview, accepted, rejected, withdrawn },
+    rows: applicationRows,
+  });
+}

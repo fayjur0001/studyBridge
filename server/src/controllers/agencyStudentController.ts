@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { users, studentProfiles, applications, programs, universities, documents, agencyStudents } from "@/db/schema";
+import { users, studentProfiles, applications, programs, universities, documents, agencyStudents, agencyProfiles } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
 
 export async function listMyStudents(req: Request, res: Response) {
@@ -87,6 +87,13 @@ const linkStudentSchema = z.object({
 // only rejects a duplicate link to the SAME agency, not to other agencies.
 export async function linkStudent(req: Request, res: Response) {
   const data = linkStudentSchema.parse(req.body);
+
+  const agencyProfile = await db.query.agencyProfiles.findFirst({
+    where: eq(agencyProfiles.userId, req.user!.id),
+  });
+  if (!agencyProfile?.isVerified) {
+    throw new AppError("Your agency must be verified by an admin before you can link students.", 403);
+  }
 
   const student = await db.query.users.findFirst({
     where: and(eq(users.email, data.email.toLowerCase()), eq(users.role, "student")),

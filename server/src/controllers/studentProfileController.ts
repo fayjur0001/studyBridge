@@ -9,22 +9,28 @@ import { optionalUrl } from "@/utils/zodHelpers";
 // A student can be linked to more than one agency at once, so this returns
 // the full list. `agency` (singular, first item or null) is kept alongside
 // `agencies` for compatibility with older clients that only show one.
+// Only agencies whose account is still active are surfaced here — if an
+// admin suspends an agency, it should stop appearing as the student's
+// active agency even though the underlying link row still exists.
 async function withAgency<T extends { id: string }>(user: T) {
   const links = await db
     .select({
       userId: users.id,
       companyName: agencyProfiles.companyName,
       fullName: users.fullName,
+      isActive: users.isActive,
     })
     .from(agencyStudents)
     .innerJoin(users, eq(agencyStudents.agencyId, users.id))
     .leftJoin(agencyProfiles, eq(agencyProfiles.userId, agencyStudents.agencyId))
     .where(eq(agencyStudents.studentId, user.id));
 
-  const agencies = links.map((row) => ({
-    userId: row.userId,
-    companyName: row.companyName ?? row.fullName,
-  }));
+  const agencies = links
+    .filter((row) => row.isActive)
+    .map((row) => ({
+      userId: row.userId,
+      companyName: row.companyName ?? row.fullName,
+    }));
 
   return {
     ...user,

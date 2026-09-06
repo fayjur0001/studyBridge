@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { href: "/admin/agencies", icon: "business_center", label: "Agencies" },
   { href: "/admin/universities", icon: "school", label: "Universities" },
   { href: "/admin/scholarships", icon: "military_tech", label: "Scholarships" },
-  { href: "/admin/content", icon: "description", label: "Content" },
   { href: "/admin/reports", icon: "assessment", label: "Reports" },
   { href: "/admin/analytics", icon: "monitoring", label: "Analytics" },
 ];

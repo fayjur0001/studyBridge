@@ -8,6 +8,7 @@ import {
   getAdminReportStats,
 } from "@/controllers/adminOverviewController";
 import { getAdminAnalytics } from "@/controllers/adminAnalyticsController";
+import { getAdminAgencyAnalytics } from "@/controllers/adminAgencyAnalyticsController";
 import { listSiteContent, upsertSiteContent } from "@/controllers/siteContentController";
 import { getMySettings, updateMySettings } from "@/controllers/studentSettingsController";
 
@@ -18,6 +19,7 @@ router.use(requireAuth, requireRole("admin"));
 router.get("/overview", asyncHandler(getAdminOverviewStats));
 router.get("/reports", asyncHandler(getAdminReportStats));
 router.get("/analytics", asyncHandler(getAdminAnalytics));
+router.get("/agencies/analytics", asyncHandler(getAdminAgencyAnalytics));
 router.get("/settings", asyncHandler(getMySettings));
 router.patch("/settings", asyncHandler(updateMySettings));
 
