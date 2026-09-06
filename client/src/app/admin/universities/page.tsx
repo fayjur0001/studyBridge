@@ -13,6 +13,9 @@ const EMPTY_FORM = {
   ranking: "",
   websiteUrl: "",
   description: "",
+  admissionRequirements: "",
+  applicationStartDate: "",
+  applicationDeadline: "",
 };
 
 export default function AdminUniversitiesPage() {
@@ -24,6 +27,7 @@ export default function AdminUniversitiesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [images, setImages] = useState<File[]>([]);
 
   function load() {
     setLoading(true);
@@ -55,6 +59,9 @@ export default function AdminUniversitiesPage() {
       ranking: u.ranking?.toString() ?? "",
       websiteUrl: u.websiteUrl ?? "",
       description: u.description ?? "",
+      admissionRequirements: u.admissionRequirements ?? "",
+      applicationStartDate: u.applicationStartDate?.slice(0, 10) ?? "",
+      applicationDeadline: u.applicationDeadline?.slice(0, 10) ?? "",
     });
     setError(null);
     setShowForm(true);
@@ -72,12 +79,19 @@ export default function AdminUniversitiesPage() {
         ranking: form.ranking ? Number(form.ranking) : undefined,
         websiteUrl: form.websiteUrl || undefined,
         description: form.description || undefined,
+        admissionRequirements: form.admissionRequirements || undefined,
+        applicationStartDate: form.applicationStartDate || undefined,
+        applicationDeadline: form.applicationDeadline || undefined,
       };
+      let universityId: string;
       if (editingId) {
         await api.patch(`/api/universities/${editingId}`, payload);
+        universityId = editingId;
       } else {
-        await api.post("/api/universities", payload);
+        const created = await api.post<University>("/api/universities", payload);
+        universityId = created.id;
       }
+      if (images.length) { const body = new FormData(); images.forEach((image) => body.append("images", image)); await api.post(`/api/universities/${universityId}/images`, body); }
       setShowForm(false);
       load();
     } catch (err) {
@@ -97,11 +111,11 @@ export default function AdminUniversitiesPage() {
     <>
 <AdminSidebar />
 
-<header className="flex justify-between items-center h-16 px-8 ml-[260px] w-[calc(100%-260px)] fixed top-0 bg-surface z-40 border-b border-outline-variant shadow-sm">
+<header className="flex justify-between items-center h-16 px-8 ml-[260px] w-[calc(100%-260px)] fixed top-0 bg-surface dark:bg-[#17181d] z-40 border-b border-outline-variant dark:border-white/10 shadow-sm">
 <h2 className="font-headline-sm text-headline-sm font-semibold text-primary">University Management</h2>
 </header>
 
-<main className="ml-[260px] pt-24 px-8 pb-8 h-screen overflow-y-auto bg-surface-container-low custom-scrollbar">
+<main className="ml-[260px] pt-24 px-8 pb-8 h-screen overflow-y-auto bg-surface-container-low dark:bg-[#101115] custom-scrollbar">
 
 <div className="flex justify-between items-end mb-8">
 <div>
@@ -115,23 +129,27 @@ export default function AdminUniversitiesPage() {
 </div>
 
 {showForm && (
-<div className="ambient-card p-8 mb-8">
+<div className="rounded-3xl bg-surface-container-lowest dark:bg-[#1b1c20] border border-outline-variant/20 dark:border-white/10 p-8 mb-8 shadow-sm">
 <h3 className="font-headline-sm text-headline-sm mb-6">{editingId ? "Edit University" : "Add University"}</h3>
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-<select className="bg-surface-container-low border-none rounded-xl py-3 px-4" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}>
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/30" placeholder="University name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/30" placeholder="Country *" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+<select className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/30" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}>
 <option value="">No region</option>
 <option value="North America">North America</option>
 <option value="Europe">Europe</option>
 <option value="Asia-Pacific">Asia-Pacific</option>
 <option value="Middle East">Middle East</option>
 </select>
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Global Ranking" type="number" value={form.ranking} onChange={(e) => setForm({ ...form, ranking: e.target.value })} />
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Website URL" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/30" placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/30" placeholder="Global ranking" type="number" min="1" value={form.ranking} onChange={(e) => setForm({ ...form, ranking: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/30" placeholder="Website URL (https://...)" type="url" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} />
 </div>
-<textarea className="w-full bg-surface-container-low border-none rounded-xl py-3 px-4 mb-4 resize-none" rows={3} placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+<textarea className="w-full bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 mb-4 resize-none placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/30" rows={3} placeholder="Short description for students" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+<textarea className="w-full bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 mb-4 resize-none placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/30" rows={3} placeholder="Admission requirements (e.g. GPA, English score, required documents)" value={form.admissionRequirements} onChange={(e) => setForm({ ...form, admissionRequirements: e.target.value })} />
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><label className="text-sm text-on-surface-variant">Application opens<input type="date" value={form.applicationStartDate} onChange={(e) => setForm({ ...form, applicationStartDate: e.target.value })} className="mt-2 block w-full bg-surface-container-low dark:bg-[#292a30] text-on-surface rounded-xl py-3 px-4 border border-outline-variant/30 dark:border-white/10" /></label><label className="text-sm text-on-surface-variant">Application deadline<input type="date" value={form.applicationDeadline} onChange={(e) => setForm({ ...form, applicationDeadline: e.target.value })} className="mt-2 block w-full bg-surface-container-low dark:bg-[#292a30] text-on-surface rounded-xl py-3 px-4 border border-outline-variant/30 dark:border-white/10" /></label></div>
+<label className="mb-5 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-outline-variant/50 dark:border-white/15 bg-surface-container-low/60 dark:bg-[#292a30]/60 px-6 py-7 text-center transition-colors hover:border-primary hover:bg-primary-container/10"><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setImages(Array.from(e.target.files ?? []).slice(0, 8))} className="sr-only" /><span className="material-symbols-outlined mb-2 text-3xl text-primary">add_photo_alternate</span><span className="font-bold text-on-surface">Upload campus photos</span><span className="mt-1 text-sm text-on-surface-variant">Click to choose up to 8 JPG, PNG, or WEBP images</span>{images.length > 0 && <span className="mt-3 rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-on-primary-fixed">{images.length} image{images.length === 1 ? "" : "s"} selected</span>}</label>
+{images.length > 0 && <div className="mb-5 flex flex-wrap gap-2">{images.map((image) => <span key={`${image.name}-${image.lastModified}`} className="max-w-52 truncate rounded-lg bg-surface-container-low px-3 py-2 text-xs text-on-surface-variant">{image.name}</span>)}</div>}
 {error && <p className="text-error font-body-md mb-4">{error}</p>}
 <div className="flex gap-3">
 <button onClick={handleSave} disabled={saving} className="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-bold disabled:opacity-50">{saving ? "Saving..." : "Save"}</button>
@@ -140,7 +158,7 @@ export default function AdminUniversitiesPage() {
 </div>
 )}
 
-<div className="ambient-card overflow-hidden">
+<div className="rounded-3xl bg-surface-container-lowest dark:bg-[#1b1c20] border border-outline-variant/20 dark:border-white/10 overflow-hidden">
 <div className="overflow-x-auto">
 <table className="w-full text-left border-collapse">
 <thead>

@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Apply each dashboard user's saved appearance preference on every page,
   // not only after visiting the Settings screen.
   useEffect(() => {
-    const settingsPath = user?.role === "student" ? "/api/student/settings" : user?.role === "agency" ? "/api/agency/settings" : null;
+    const settingsPath = user?.role === "student" ? "/api/student/settings" : user?.role === "agency" ? "/api/agency/settings" : user?.role === "admin" ? "/api/admin/settings" : null;
     if (!settingsPath) return;
     api
       .get<{ displayMode: "light" | "dark"; language: string }>(settingsPath)

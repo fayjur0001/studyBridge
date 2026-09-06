@@ -229,6 +229,9 @@ export default function StudentDashboardPage() {
 <Link href="/universities" className="w-full mt-4 py-3 text-primary font-semibold font-label-md border-2 border-primary/10 rounded-xl hover:bg-primary hover:text-on-primary transition-all duration-300 flex items-center justify-center">
                                 Browse Universities
                             </Link>
+<Link href="/scholarships" className="w-full py-3 text-primary font-semibold font-label-md border-2 border-primary/10 rounded-xl hover:bg-primary hover:text-on-primary transition-all duration-300 flex items-center justify-center">
+                                Explore Scholarships
+                            </Link>
 </div>
 </div>
 </div>

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import AdminSidebar from "@/components/dashboard/AdminSidebar";
 import { api, ApiError } from "@/lib/api";
-import { Paginated, Scholarship } from "@/lib/types";
+import { Paginated, Scholarship, University } from "@/lib/types";
 
 const EMPTY_FORM = {
+  universityId: "",
   title: "",
   provider: "",
   category: "",
@@ -26,6 +27,7 @@ export default function AdminScholarshipsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [universities, setUniversities] = useState<University[]>([]);
 
   function load() {
     setLoading(true);
@@ -39,6 +41,7 @@ export default function AdminScholarshipsPage() {
   }
 
   useEffect(load, []);
+  useEffect(() => { api.get<Paginated<University>>("/api/universities?limit=200", { auth: false }).then((res) => setUniversities(res.data)).catch(() => {}); }, []);
 
   function openCreate() {
     setEditingId(null);
@@ -50,6 +53,7 @@ export default function AdminScholarshipsPage() {
   function openEdit(s: Scholarship) {
     setEditingId(s.id);
     setForm({
+      universityId: s.universityId ?? "",
       title: s.title,
       provider: s.provider ?? "",
       category: s.category ?? "",
@@ -69,6 +73,7 @@ export default function AdminScholarshipsPage() {
     setError(null);
     try {
       const payload = {
+        universityId: form.universityId || undefined,
         title: form.title,
         provider: form.provider || undefined,
         category: form.category || undefined,
@@ -121,24 +126,25 @@ export default function AdminScholarshipsPage() {
 </div>
 
 {showForm && (
-<div className="ambient-card p-8 mb-8">
+<div className="rounded-3xl bg-surface-container-lowest dark:bg-[#1b1c20] border border-outline-variant/20 dark:border-white/10 p-8 mb-8">
 <h3 className="font-headline-sm text-headline-sm mb-6">{editingId ? "Edit Scholarship" : "Add Scholarship"}</h3>
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Provider" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })} />
-<select className="bg-surface-container-low border-none rounded-xl py-3 px-4" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4" placeholder="Scholarship title *" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4" placeholder="Provider / foundation" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })} />
+<select className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4" value={form.universityId} onChange={(e) => setForm({ ...form, universityId: e.target.value })}><option value="">Independent scholarship (no university)</option>{universities.map((university) => <option key={university.id} value={university.id}>{university.name}</option>)}</select>
+<select className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
 <option value="">No category</option>
 <option value="Merit Based">Merit Based</option>
 <option value="Need Based">Need Based</option>
 <option value="Portfolio Based">Portfolio Based</option>
 </select>
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Amount (USD)" type="number" value={form.amountUsd} onChange={(e) => setForm({ ...form, amountUsd: e.target.value })} />
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Coverage %" type="number" value={form.coveragePercent} onChange={(e) => setForm({ ...form, coveragePercent: e.target.value })} />
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4" placeholder="Deadline" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
-<input className="bg-surface-container-low border-none rounded-xl py-3 px-4 md:col-span-2" placeholder="Apply URL" value={form.applyUrl} onChange={(e) => setForm({ ...form, applyUrl: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4" placeholder="Award amount (USD)" type="number" min="0" value={form.amountUsd} onChange={(e) => setForm({ ...form, amountUsd: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4" placeholder="Coverage percentage (0–100)" type="number" min="0" max="100" value={form.coveragePercent} onChange={(e) => setForm({ ...form, coveragePercent: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4" aria-label="Application deadline" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
+<input className="bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 md:col-span-2" placeholder="Official application URL (https://...)" type="url" value={form.applyUrl} onChange={(e) => setForm({ ...form, applyUrl: e.target.value })} />
 </div>
-<textarea className="w-full bg-surface-container-low border-none rounded-xl py-3 px-4 mb-4 resize-none" rows={2} placeholder="Eligibility" value={form.eligibility} onChange={(e) => setForm({ ...form, eligibility: e.target.value })} />
-<textarea className="w-full bg-surface-container-low border-none rounded-xl py-3 px-4 mb-4 resize-none" rows={3} placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+<textarea className="w-full bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 mb-4 resize-none" rows={3} placeholder="Eligibility requirements (GPA, nationality, study level, documents, etc.)" value={form.eligibility} onChange={(e) => setForm({ ...form, eligibility: e.target.value })} />
+<textarea className="w-full bg-surface-container-low dark:bg-[#292a30] text-on-surface border border-outline-variant/30 dark:border-white/10 rounded-xl py-3 px-4 mb-4 resize-none" rows={4} placeholder="Scholarship description, benefits, and application guidance" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
 {error && <p className="text-error font-body-md mb-4">{error}</p>}
 <div className="flex gap-3">
 <button onClick={handleSave} disabled={saving} className="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-bold disabled:opacity-50">{saving ? "Saving..." : "Save"}</button>

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, ne } from "drizzle-orm";
+import { desc, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import {
   users,
@@ -27,6 +27,9 @@ export async function getAdminOverviewStats(_req: Request, res: Response) {
     universityCount,
     programCount,
     scholarshipCount,
+    recentUsers,
+    pendingAgencies,
+    recentApplications,
   ] = await Promise.all([
     db.$count(users),
     db.$count(users, eq(users.role, "student")),
@@ -43,6 +46,9 @@ export async function getAdminOverviewStats(_req: Request, res: Response) {
     db.$count(universities),
     db.$count(programs),
     db.$count(scholarships),
+    db.select({ id: users.id, fullName: users.fullName, email: users.email, role: users.role, isActive: users.isActive, createdAt: users.createdAt }).from(users).orderBy(desc(users.createdAt)).limit(6),
+    db.select({ userId: agencyProfiles.userId, companyName: agencyProfiles.companyName, email: users.email, updatedAt: agencyProfiles.updatedAt }).from(agencyProfiles).innerJoin(users, eq(users.id, agencyProfiles.userId)).where(eq(agencyProfiles.isVerified, false)).orderBy(desc(agencyProfiles.updatedAt)).limit(6),
+    db.select({ id: applications.id, status: applications.status, createdAt: applications.createdAt, studentName: users.fullName, programName: programs.name, universityName: universities.name }).from(applications).innerJoin(users, eq(users.id, applications.studentId)).innerJoin(programs, eq(programs.id, applications.programId)).innerJoin(universities, eq(universities.id, programs.universityId)).orderBy(desc(applications.createdAt)).limit(6),
   ]);
 
   res.json({
@@ -50,6 +56,9 @@ export async function getAdminOverviewStats(_req: Request, res: Response) {
     agencies: { total: totalAgencies, pendingVerification },
     applications: { total: totalApplications, submitted, underReview, accepted, rejected },
     catalog: { universities: universityCount, programs: programCount, scholarships: scholarshipCount },
+    recentUsers,
+    pendingAgencies,
+    recentApplications,
   });
 }
 

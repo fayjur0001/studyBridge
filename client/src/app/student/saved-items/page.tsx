@@ -166,13 +166,13 @@ export default function SavedItemsPage() {
 <div className="md:w-2/3 border-l border-outline-variant/30 pl-0 md:pl-8 flex flex-col justify-between">
 <div>
 <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-3">Eligibility</p>
-<p className="text-sm text-on-surface-variant">{s.eligibility || "See scholarship page for full details."}</p>
+{s.eligibility ? <p className="text-sm text-on-surface-variant">{s.eligibility}</p> : <Link href={`/scholarships/${s.id}`} className="text-sm text-primary font-semibold hover:underline">See scholarship page for full details.</Link>}
 </div>
 <div className="mt-6 flex items-center justify-end">
 {s.applyUrl ? (
 <a href={s.applyUrl} target="_blank" rel="noreferrer" className="px-8 py-3 bg-primary text-on-primary rounded-xl font-bold hover:shadow-xl transition-all active:scale-95">Apply</a>
 ) : (
-<span className="text-outline font-label-md">Application link coming soon</span>
+<Link href={`/scholarships/${s.id}`} className="px-6 py-3 rounded-xl bg-surface-container-low text-primary font-bold hover:bg-surface-container transition-colors">View scholarship details</Link>
 )}
 </div>
 </div>

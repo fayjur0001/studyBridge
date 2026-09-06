@@ -7,6 +7,11 @@ const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1564981797816-1043664bf
 export function universityImage(name: string, coverImageUrl?: string | null, logoUrl?: string | null) {
   if (/university of oxford/i.test(name)) return OXFORD_IMAGE;
   if (/national university of singapore/i.test(name)) return NUS_IMAGE;
-  if (coverImageUrl) return coverImageUrl;
-  return logoUrl || DEFAULT_IMAGE;
+  if (coverImageUrl) return resolveImageUrl(coverImageUrl);
+  return logoUrl ? resolveImageUrl(logoUrl) : DEFAULT_IMAGE;
 }
+
+function resolveImageUrl(url: string) {
+  return url.startsWith("/") ? `${API_BASE_URL}${url}` : url;
+}
+import { API_BASE_URL } from "@/lib/api";

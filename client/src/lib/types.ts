@@ -18,6 +18,10 @@ export interface University {
   logoUrl: string | null;
   coverImageUrl: string | null;
   description: string | null;
+  admissionRequirements?: string | null;
+  applicationStartDate?: string | null;
+  applicationDeadline?: string | null;
+  galleryImageUrls?: string[];
   ranking: number | null;
   websiteUrl: string | null;
   isFeatured: boolean;

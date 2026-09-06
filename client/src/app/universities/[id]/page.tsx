@@ -120,6 +120,10 @@ export default function UniversityDetailPage() {
 </div>
 </section>
 
+{(university?.admissionRequirements || university?.applicationStartDate || university?.applicationDeadline) && <section className="ambient-card rounded-3xl p-8"><h2 className="font-headline-lg text-primary mb-6">Admissions information</h2><div className="grid md:grid-cols-2 gap-5">{university?.admissionRequirements && <div><h3 className="font-bold text-on-surface mb-2">Requirements</h3><p className="whitespace-pre-wrap text-on-surface-variant">{university.admissionRequirements}</p></div>}<div className="rounded-2xl bg-surface-container-low p-5 space-y-3"><p className="text-on-surface-variant">Application opens: <b className="text-on-surface">{university?.applicationStartDate ? new Date(university.applicationStartDate).toLocaleDateString() : "Contact university"}</b></p><p className="text-on-surface-variant">Application deadline: <b className="text-on-surface">{university?.applicationDeadline ? new Date(university.applicationDeadline).toLocaleDateString() : "Contact university"}</b></p></div></div></section>}
+
+{university?.galleryImageUrls?.length ? <section className="space-y-6"><h2 className="font-headline-lg text-primary">Campus gallery</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-card-gap">{university.galleryImageUrls.map((image, index) => <img key={image} src={image.startsWith("/") ? `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}${image}` : image} alt={`${university.name} campus ${index + 1}`} className="w-full aspect-[4/3] object-cover rounded-3xl" />)}</div></section> : null}
+
 <section id="programs">
 <div className="flex justify-between items-end mb-8">
 <div>

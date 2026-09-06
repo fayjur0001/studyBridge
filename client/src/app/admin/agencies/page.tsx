@@ -1,179 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminSidebar from "@/components/dashboard/AdminSidebar";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 
-interface Agency {
-  userId: string;
-  companyName: string;
-  licenseNumber: string | null;
-  website: string | null;
-  isVerified: boolean;
-  email: string;
-  fullName: string;
-}
+interface Agency { userId: string; companyName: string; licenseNumber: string | null; website: string | null; address: string | null; description: string | null; isVerified: boolean; email: string; fullName: string; createdAt: string; updatedAt: string; }
 
 export default function AdminAgenciesPage() {
-  const [agencies, setAgencies] = useState<Agency[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-
-  function load() {
-    setLoading(true);
-    api
-      .get<{ data: Agency[] }>("/api/admin/agencies")
-      .then((res) => {
-        setAgencies(res.data);
-        setSelectedId((current) => current ?? res.data.find((a) => !a.isVerified)?.userId ?? res.data[0]?.userId ?? null);
-      })
-      .finally(() => setLoading(false));
-  }
-
+  const [agencies, setAgencies] = useState<Agency[]>([]); const [selectedId, setSelectedId] = useState<string | null>(null); const [filter, setFilter] = useState<"all" | "pending" | "verified">("all"); const [query, setQuery] = useState(""); const [loading, setLoading] = useState(true); const [updating, setUpdating] = useState(false); const [notice, setNotice] = useState("");
+  function load() { setLoading(true); api.get<{ data: Agency[] }>("/api/admin/agencies").then((res) => { setAgencies(res.data); setSelectedId((current) => current && res.data.some((a) => a.userId === current) ? current : res.data.find((a) => !a.isVerified)?.userId ?? res.data[0]?.userId ?? null); }).catch(() => setNotice("Couldn't load agency profiles.")).finally(() => setLoading(false)); }
   useEffect(load, []);
-
-  const pending = agencies.filter((a) => !a.isVerified);
-  const selected = agencies.find((a) => a.userId === selectedId) ?? null;
-
-  async function setVerified(isVerified: boolean) {
-    if (!selected) return;
-    setUpdating(true);
-    try {
-      await api.patch(`/api/admin/agencies/${selected.userId}/verify`, { isVerified });
-      load();
-    } finally {
-      setUpdating(false);
-    }
-  }
-
-  return (
-    <>
-<AdminSidebar />
-
-
-{/* Top Navigation Bar */}
-<header className="flex justify-between items-center h-16 px-8 ml-[260px] w-[calc(100%-260px)] sticky top-0 z-40 bg-surface border-b border-outline-variant shadow-sm">
-<div className="flex items-center gap-4">
-<h2 className="font-headline-sm text-headline-sm font-semibold text-primary">Agency Approvals</h2>
-</div>
-<div className="flex items-center gap-6">
-<div className="flex items-center gap-3">
-<span className="font-label-md text-label-md font-medium text-on-surface-variant">Queue Status: <span className="text-primary font-bold">{pending.length} Pending</span></span>
-</div>
-</div>
-</header>
-{/* Main Content Canvas */}
-<main className="ml-[260px] p-8 min-h-[calc(100vh-64px)]">
-<div className="grid grid-cols-12 gap-8">
-{/* List of Agencies */}
-<section className="col-span-12 xl:col-span-4 space-y-6">
-<div className="flex items-center justify-between mb-2">
-<h3 className="font-headline-sm text-headline-sm text-on-surface">All Agencies</h3>
-<span className="bg-secondary-container/20 text-on-secondary-container px-3 py-1 rounded-full font-label-md text-label-md font-bold">{agencies.length} Total</span>
-</div>
-<div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 custom-scrollbar">
-
-{!loading && agencies.length === 0 && (
-  <p className="text-on-surface-variant font-body-md">No agencies have registered yet.</p>
-)}
-
-{agencies.map((a) => (
-<div
-  key={a.userId}
-  onClick={() => setSelectedId(a.userId)}
-  className={`bg-white p-5 rounded-2xl ambient-card border-l-4 cursor-pointer hover:bg-primary-container/5 transition-all ${a.userId === selectedId ? "border-primary" : "border-transparent"} ${a.isVerified ? "opacity-70" : ""}`}
->
-<div className="flex justify-between items-start mb-3">
-<h4 className="font-headline-sm text-headline-sm text-on-surface font-bold">{a.companyName}</h4>
-{a.isVerified ? (
-  <span className="text-secondary font-label-md text-label-md flex items-center gap-1">
-    <span className="material-symbols-outlined text-[16px]">verified</span> Verified
-  </span>
-) : (
-  <span className="text-primary font-label-md text-label-md">Pending</span>
-)}
-</div>
-<div className="space-y-2">
-<div className="flex items-center gap-2 text-on-surface-variant">
-<span className="material-symbols-outlined text-[18px]">person</span>
-<span className="font-body-md text-body-md">Contact: {a.fullName}</span>
-</div>
-<div className="flex items-center gap-2 text-on-surface-variant">
-<span className="material-symbols-outlined text-[18px]">mail</span>
-<span className="font-body-md text-body-md">{a.email}</span>
-</div>
-</div>
-</div>
-))}
-</div>
-</section>
-{/* Detail View */}
-<section className="col-span-12 xl:col-span-8 space-y-6">
-{selected ? (
-<div className="bg-white rounded-3xl ambient-card overflow-hidden">
-<div className="p-8 border-b border-outline-variant bg-surface-container-lowest flex justify-between items-center">
-<div className="flex items-center gap-5">
-<div className="w-16 h-16 bg-primary-fixed rounded-2xl flex items-center justify-center">
-<span className="material-symbols-outlined text-primary text-[32px]">business</span>
-</div>
-<div>
-<h2 className="font-headline-lg text-headline-lg text-on-surface">{selected.companyName}</h2>
-<p className="text-on-surface-variant font-body-lg text-body-lg">License: {selected.licenseNumber || "Not provided"}</p>
-</div>
-</div>
-</div>
-<div className="p-8 grid grid-cols-12 gap-10">
-<div className="col-span-12 lg:col-span-7 space-y-6">
-<div className="flex items-center gap-2 text-on-surface-variant">
-<span className="material-symbols-outlined text-primary">person</span>
-<span className="font-body-lg text-body-lg">{selected.fullName} — {selected.email}</span>
-</div>
-{selected.website && (
-<div className="flex items-center gap-2 text-on-surface-variant">
-<span className="material-symbols-outlined text-primary">language</span>
-<a href={selected.website} target="_blank" rel="noreferrer" className="font-body-lg text-body-lg text-primary hover:underline">{selected.website}</a>
-</div>
-)}
-</div>
-<div className="col-span-12 lg:col-span-5">
-<div className="bg-surface-container-highest/30 rounded-3xl p-8">
-<h4 className="font-headline-sm text-headline-sm text-on-surface mb-6">Decision Panel</h4>
-<div className="space-y-4">
-{!selected.isVerified ? (
-<button
-  onClick={() => setVerified(true)}
-  disabled={updating}
-  className="w-full flex items-center justify-between p-4 bg-primary text-on-primary rounded-2xl font-body-lg text-body-lg font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
->
-<span className="flex items-center gap-3">
-<span className="material-symbols-outlined">verified</span>
-                                            Approve Agency
-                                        </span>
-</button>
-) : (
-<button
-  onClick={() => setVerified(false)}
-  disabled={updating}
-  className="w-full flex items-center justify-between p-4 bg-error-container text-on-error-container rounded-2xl font-body-lg text-body-lg font-bold hover:brightness-95 transition-all disabled:opacity-50"
->
-<span className="flex items-center gap-3">
-<span className="material-symbols-outlined">cancel</span>
-                                            Revoke Verification
-                                        </span>
-</button>
-)}
-</div>
-</div>
-</div>
-</div>
-</div>
-) : (
-<p className="text-on-surface-variant font-body-md">Select an agency to review.</p>
-)}
-</section>
-</div>
-</main>
-    </>
-  );
+  const pending = agencies.filter((a) => !a.isVerified); const visible = useMemo(() => agencies.filter((a) => (filter === "all" || filter === "pending" ? !a.isVerified || filter === "all" : a.isVerified) && `${a.companyName} ${a.fullName} ${a.email} ${a.licenseNumber ?? ""}`.toLowerCase().includes(query.toLowerCase().trim())), [agencies, filter, query]); const selected = agencies.find((a) => a.userId === selectedId) ?? null;
+  async function setVerified(isVerified: boolean) { if (!selected) return; setUpdating(true); setNotice(""); try { await api.patch(`/api/admin/agencies/${selected.userId}/verify`, { isVerified }); setNotice(isVerified ? `${selected.companyName} is now verified.` : `${selected.companyName}'s verification was revoked.`); load(); } catch (error) { setNotice(error instanceof ApiError ? error.message : "Couldn't update verification."); } finally { setUpdating(false); } }
+  return <><AdminSidebar /><main className="ml-[260px] min-h-screen bg-background text-on-background"><header className="sticky top-0 z-40 h-20 px-8 flex items-center justify-between bg-surface/90 dark:bg-[#17181d]/95 backdrop-blur-md border-b border-outline-variant/20 dark:border-white/10"><div><p className="text-label-md uppercase tracking-[.16em] text-on-surface-variant font-bold">Administration</p><h1 className="font-headline-md text-primary">Agency Approvals</h1></div><div className="rounded-full bg-secondary-fixed px-4 py-2 text-sm font-bold text-on-secondary-fixed">{pending.length} pending</div></header><div className="max-w-[1500px] mx-auto p-8"><div className="flex flex-col lg:flex-row justify-between gap-4 mb-7"><div><h2 className="font-headline-lg text-on-surface">Review agency profiles</h2><p className="text-on-surface-variant mt-1">Verify legitimate agencies after reviewing their supplied information.</p></div><button onClick={load} disabled={loading} className="self-start px-4 py-2.5 rounded-xl bg-surface-container-low text-primary font-bold disabled:opacity-50"><span className="material-symbols-outlined align-middle mr-1">refresh</span>Refresh</button></div>{notice && <p className="mb-6 rounded-xl bg-surface-container-low p-4 text-on-surface-variant">{notice}</p>}<div className="grid grid-cols-1 xl:grid-cols-12 gap-6"><section className="xl:col-span-4 rounded-3xl bg-surface-container-lowest dark:bg-[#1b1c20] border border-outline-variant/20 dark:border-white/10 p-5"><div className="relative"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search agencies..." type="search" className="w-full rounded-xl bg-surface-container-low border-0 py-3 pl-10 pr-4 text-on-surface focus:ring-2 focus:ring-primary/30" /></div><div className="flex gap-2 mt-4">{(["all", "pending", "verified"] as const).map((item) => <button key={item} onClick={() => setFilter(item)} className={`capitalize px-3 py-2 rounded-lg text-sm font-bold ${filter === item ? "bg-primary text-on-primary" : "bg-surface-container-low text-on-surface-variant"}`}>{item} {item === "all" ? agencies.length : item === "pending" ? pending.length : agencies.length - pending.length}</button>)}</div><div className="mt-5 space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto custom-scrollbar pr-1">{loading ? <p className="p-6 text-on-surface-variant">Loading agencies...</p> : visible.length ? visible.map((agency) => <button key={agency.userId} onClick={() => setSelectedId(agency.userId)} className={`w-full text-left rounded-2xl p-4 border transition-colors ${selectedId === agency.userId ? "bg-primary-container/15 border-primary/40" : "bg-surface-container-low border-transparent hover:border-outline-variant"}`}><div className="flex justify-between gap-2"><p className="font-bold text-on-surface truncate">{agency.companyName}</p><span className={`shrink-0 text-xs font-bold ${agency.isVerified ? "text-secondary" : "text-primary"}`}>{agency.isVerified ? "Verified" : "Pending"}</span></div><p className="mt-1 text-sm text-on-surface-variant truncate">{agency.fullName} · {agency.email}</p><p className="mt-2 text-xs text-on-surface-variant">{agency.licenseNumber ? `License: ${agency.licenseNumber}` : "License not provided"}</p></button>) : <p className="p-6 text-center text-on-surface-variant">No agencies match this filter.</p>}</div></section><section className="xl:col-span-8">{selected ? <div className="rounded-3xl overflow-hidden bg-surface-container-lowest dark:bg-[#1b1c20] border border-outline-variant/20 dark:border-white/10"><div className="p-7 border-b border-outline-variant/20 dark:border-white/10 flex flex-col sm:flex-row justify-between gap-5"><div className="flex gap-4"><div className="w-14 h-14 rounded-2xl bg-primary-fixed text-primary flex items-center justify-center"><span className="material-symbols-outlined text-3xl">business</span></div><div><div className="flex gap-3 items-center flex-wrap"><h2 className="font-headline-md text-on-surface">{selected.companyName}</h2><span className={`px-3 py-1 rounded-full text-xs font-bold ${selected.isVerified ? "bg-secondary-fixed text-on-secondary-fixed" : "bg-primary-fixed text-on-primary-fixed"}`}>{selected.isVerified ? "Verified agency" : "Pending verification"}</span></div><p className="mt-1 text-on-surface-variant">Submitted {new Date(selected.createdAt).toLocaleDateString()}</p></div></div>{!selected.isVerified ? <button onClick={() => setVerified(true)} disabled={updating} className="h-fit px-5 py-3 rounded-xl bg-primary text-on-primary font-bold disabled:opacity-50">{updating ? "Approving..." : "Approve agency"}</button> : <button onClick={() => setVerified(false)} disabled={updating} className="h-fit px-5 py-3 rounded-xl bg-error-container text-on-error-container font-bold disabled:opacity-50">{updating ? "Updating..." : "Revoke verification"}</button>}</div><div className="grid md:grid-cols-2 gap-5 p-7"><Info icon="person" label="Primary contact" value={selected.fullName} /><Info icon="mail" label="Email address" value={selected.email} /><Info icon="badge" label="License number" value={selected.licenseNumber ?? "Not provided"} /><Info icon="location_on" label="Address" value={selected.address ?? "Not provided"} /><div className="md:col-span-2 rounded-2xl bg-surface-container-low p-5"><p className="text-sm font-bold text-on-surface-variant">Agency description</p><p className="mt-2 text-on-surface whitespace-pre-wrap">{selected.description || "No agency description has been provided."}</p></div>{selected.website && <div className="md:col-span-2 rounded-2xl bg-surface-container-low p-5"><p className="text-sm font-bold text-on-surface-variant">Website</p><a href={selected.website} target="_blank" rel="noreferrer" className="mt-2 inline-flex gap-2 text-primary font-bold hover:underline">{selected.website}<span className="material-symbols-outlined text-lg">open_in_new</span></a></div>}<div className="md:col-span-2 rounded-2xl border border-outline-variant/30 p-5 flex flex-col sm:flex-row gap-4 justify-between"><div><p className="font-bold text-on-surface">Verification decision</p><p className="text-sm text-on-surface-variant mt-1">Only approve after confirming company, license, contact details and supporting documents.</p></div><button onClick={() => setVerified(!selected.isVerified)} disabled={updating} className="shrink-0 px-5 py-3 rounded-xl bg-surface-container-high text-primary font-bold disabled:opacity-50">{selected.isVerified ? "Mark pending" : "Approve now"}</button></div></div></div> : <div className="rounded-3xl bg-surface-container-lowest p-12 text-center text-on-surface-variant">Select an agency to review its profile.</div>}</section></div></div></main></>;
 }
+
+function Info({ icon, label, value }: { icon: string; label: string; value: string }) { return <div className="rounded-2xl bg-surface-container-low p-5"><span className="material-symbols-outlined text-primary">{icon}</span><p className="mt-3 text-sm font-bold text-on-surface-variant">{label}</p><p className="mt-1 text-on-surface break-words">{value}</p></div>; }

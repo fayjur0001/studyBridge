@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Button from "@/components/ui/Button";
+import { useAuth } from "@/lib/auth-context";
 
 const links = [
   { label: "Universities", href: "/universities" },
@@ -17,6 +20,8 @@ export default function PublicNavbar({
   variant = "solid",
   current,
 }: PublicNavbarProps) {
+  const { user, loading } = useAuth();
+  const dashboardHref = user?.role === "student" ? "/student/dashboard" : user?.role === "agency" ? "/agency/dashboard" : "/admin/overview";
   const wrapperClass =
     variant === "glass"
       ? "sticky top-0 w-full z-50 glass-header border-b border-outline-variant/30"
@@ -47,15 +52,9 @@ export default function PublicNavbar({
           ))}
         </div>
         <div className="flex items-center gap-4">
-          <Link
-            href="/login"
-            className="hidden sm:block font-body-md font-bold text-primary hover:opacity-80 transition-all"
-          >
-            Log In
-          </Link>
-          <Button href="/register" size="sm">
-            Get Started
-          </Button>
+          {!loading && user ? (
+            <Link href={dashboardHref} className="inline-flex items-center gap-2 rounded-xl bg-primary text-on-primary px-4 py-2.5 font-bold text-sm hover:opacity-90 transition-opacity"><span className="material-symbols-outlined text-lg">arrow_back</span>Back to Dashboard</Link>
+          ) : !loading ? <><Link href="/login" className="hidden sm:block font-body-md font-bold text-primary hover:opacity-80 transition-all">Log In</Link><Button href="/register" size="sm">Get Started</Button></> : null}
         </div>
       </nav>
     </header>

@@ -50,6 +50,13 @@
       "when": 1788715000000,
       "tag": "0007_agency_service_interests",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788725000000,
+      "tag": "0008_university_admissions",
+      "breakpoints": true
     }
   ]
 }

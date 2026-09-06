@@ -12,9 +12,13 @@ export async function listAgencies(req: Request, res: Response) {
       companyName: agencyProfiles.companyName,
       licenseNumber: agencyProfiles.licenseNumber,
       website: agencyProfiles.website,
+      address: agencyProfiles.address,
+      description: agencyProfiles.description,
       isVerified: agencyProfiles.isVerified,
       email: users.email,
       fullName: users.fullName,
+      createdAt: users.createdAt,
+      updatedAt: agencyProfiles.updatedAt,
     })
     .from(agencyProfiles)
     .innerJoin(users, eq(agencyProfiles.userId, users.id))

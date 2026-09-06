@@ -9,6 +9,7 @@ import {
 } from "@/controllers/adminOverviewController";
 import { getAdminAnalytics } from "@/controllers/adminAnalyticsController";
 import { listSiteContent, upsertSiteContent } from "@/controllers/siteContentController";
+import { getMySettings, updateMySettings } from "@/controllers/studentSettingsController";
 
 const router = Router();
 
@@ -17,6 +18,8 @@ router.use(requireAuth, requireRole("admin"));
 router.get("/overview", asyncHandler(getAdminOverviewStats));
 router.get("/reports", asyncHandler(getAdminReportStats));
 router.get("/analytics", asyncHandler(getAdminAnalytics));
+router.get("/settings", asyncHandler(getMySettings));
+router.patch("/settings", asyncHandler(updateMySettings));
 
 router.get("/content", asyncHandler(listSiteContent));
 router.put("/content", asyncHandler(upsertSiteContent));

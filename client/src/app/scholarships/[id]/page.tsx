@@ -2,17 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import PublicNavbar from "@/components/layout/PublicNavbar";
 import PublicFooter from "@/components/layout/PublicFooter";
 import { api, ApiError } from "@/lib/api";
 import { Scholarship } from "@/lib/types";
+import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 export default function ScholarshipDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
   const [scholarship, setScholarship] = useState<Scholarship | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [startingDashboardApplication, setStartingDashboardApplication] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     api.get<Scholarship>(`/api/scholarships/${id}`, { auth: false }).then(setScholarship);
@@ -25,6 +31,20 @@ export default function ScholarshipDetailPage() {
       setSaved(true);
     } catch (err) {
       setSaveError(err instanceof ApiError ? "Please log in as a student to save scholarships." : "Couldn't save right now.");
+    }
+  }
+
+  async function handleDashboardApplication() {
+    setSaveError(null);
+    setStartingDashboardApplication(true);
+    try {
+      await api.post("/api/saved-items", { itemType: "scholarship", itemId: id });
+      setSaved(true);
+      router.push("/student/saved-items");
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Couldn't add this scholarship to your dashboard.");
+    } finally {
+      setStartingDashboardApplication(false);
     }
   }
 
@@ -81,10 +101,10 @@ export default function ScholarshipDetailPage() {
 <a href={scholarship.applyUrl} target="_blank" rel="noreferrer" className="block text-center w-full bg-primary text-on-primary py-4 rounded-xl font-headline-sm text-headline-sm hover:bg-primary-container active:scale-[0.98] transition-all shadow-lg shadow-primary/20 mb-4">
                         Apply Now
                     </a>
+) : user?.role === "student" ? (
+<button onClick={handleDashboardApplication} disabled={startingDashboardApplication} className="block text-center w-full bg-primary text-on-primary py-4 rounded-xl font-headline-sm text-headline-sm hover:bg-primary-container active:scale-[0.98] transition-all shadow-lg shadow-primary/20 mb-4 disabled:opacity-60">{startingDashboardApplication ? "Adding to your dashboard..." : "Apply via your student dashboard"}</button>
 ) : (
-<div className="w-full bg-surface-container text-on-surface-variant py-4 rounded-xl font-headline-sm text-headline-sm text-center mb-4">
-                        Apply via your student dashboard
-                    </div>
+<Link href="/login" className="block text-center w-full bg-surface-container text-primary py-4 rounded-xl font-headline-sm text-headline-sm hover:bg-surface-container-high transition-all mb-4">Log in as a student to apply</Link>
 )}
 <button onClick={handleSave} disabled={saved} className="w-full bg-surface-container-low text-primary py-4 rounded-xl font-headline-sm text-headline-sm hover:bg-surface-container transition-all flex items-center justify-center gap-2 disabled:opacity-60">
 <span className="material-symbols-outlined">{saved ? "check" : "bookmark"}</span>
