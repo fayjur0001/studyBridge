@@ -1,407 +1,440 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import Button from "@/components/ui/Button";
-import PublicNavbar from "@/components/layout/PublicNavbar";
-import PublicFooter from "@/components/layout/PublicFooter";
-import FeaturedUniversities from "@/components/home/FeaturedUniversities";
+import AgencySidebar from "@/components/dashboard/AgencySidebar";
+import { api, ApiError } from "@/lib/api";
+import { setTheme } from "@/lib/theme";
 
-const audiences = [
-  {
-    icon: "person_search",
-    title: "For Students",
-    accent: "text-primary",
-    iconBg: "bg-primary/5",
-    body: "Discover programs that align with your background and goals using our MatchScore system.",
-    points: ["Application Tracking", "Scholarship Matching"],
-    cta: "Explore Features",
-    theme: "light" as const,
-  },
-  {
-    icon: "business_center",
-    title: "For Agencies",
-    accent: "text-secondary",
-    iconBg: "bg-secondary/5",
-    body: "Streamline recruitment workflows and manage student applications through a single dashboard.",
-    points: ["CRM Integration", "Commission Management"],
-    cta: "Partner With Us",
-    theme: "light" as const,
-  },
-  {
-    icon: "account_balance",
-    title: "For Institutions",
-    accent: "text-white",
-    iconBg: "bg-white/10",
-    body: "Access a pool of qualified, high-intent students and showcase your brand to a global audience.",
-    points: ["Verified Lead Gen", "Direct Admissions"],
-    cta: "List Your Institution",
-    theme: "dark" as const,
-  },
-];
+interface NotifPrefs {
+  emailOnApplicationUpdate: boolean;
+  emailOnMessage: boolean;
+  emailOnNewStudentLead: boolean;
+}
 
-const stats = [
-  { value: "94%", label: "Success Rate" },
-  { value: "8k+", label: "Active Programs" },
-];
+interface AccountSettings {
+  language: "en-GB" | "en-US" | "fr-FR" | "es-ES" | "de-DE";
+  timezone: "Etc/GMT" | "Europe/Paris" | "America/New_York";
+  currency: "GBP" | "USD" | "EUR";
+  displayMode: "light" | "dark";
+}
 
-const trustedNames = [
-  { icon: "school", label: "OXFORD ELITE" },
-  { icon: "account_balance", label: "IVY CONNECT" },
-  { icon: "hub", label: "GLOBAL SCHOLAR" },
-  { icon: "workspace_premium", label: "STANFORD REACH" },
-];
+type TeamRole = "Admin" | "Senior Agent" | "Counselor" | "Support";
+interface TeamMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: TeamRole;
+  status: "pending" | "active";
+}
+const TEAM_ROLES: TeamRole[] = ["Admin", "Senior Agent", "Counselor", "Support"];
 
-export default function LandingPage() {
+const defaultSettings: AccountSettings = { language: "en-GB", timezone: "Etc/GMT", currency: "GBP", displayMode: "light" };
+
+export default function AgencySettingsPage() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>({
+    emailOnApplicationUpdate: true,
+    emailOnMessage: true,
+    emailOnNewStudentLead: true,
+  });
+  const [accountSettings, setAccountSettings] = useState<AccountSettings>(defaultSettings);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<TeamRole>("Counselor");
+  const [inviting, setInviting] = useState(false);
+
+  useEffect(() => {
+    api.get<NotifPrefs>("/api/agency/notification-preferences").then(setNotifPrefs).catch(() => {});
+    api.get<AccountSettings>("/api/agency/settings").then((settings) => {
+      setAccountSettings(settings);
+      setTheme(settings.displayMode);
+      document.documentElement.lang = settings.language.split("-")[0];
+    }).catch(() => {});
+    api.get<{ data: TeamMember[] }>("/api/agency/team").then((result) => setTeam(result.data)).catch(() => {});
+  }, []);
+
+  async function inviteMember() {
+    if (!inviteName.trim() || !inviteEmail.trim()) return;
+    setInviting(true);
+    setMessage(null);
+    try {
+      const member = await api.post<TeamMember>("/api/agency/team", { fullName: inviteName, email: inviteEmail, role: inviteRole });
+      setTeam((current) => [...current, member]);
+      setInviteName(""); setInviteEmail(""); setInviteRole("Counselor"); setShowInvite(false);
+      setMessage({ type: "success", text: "Team invitation created." });
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't invite this team member." });
+    } finally { setInviting(false); }
+  }
+
+  async function updateMember(member: TeamMember, update: Partial<Pick<TeamMember, "role" | "status">>) {
+    try {
+      const saved = await api.patch<TeamMember>(`/api/agency/team/${member.id}`, update);
+      setTeam((current) => current.map((item) => item.id === saved.id ? saved : item));
+    } catch (err) { setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't update team member." }); }
+  }
+
+  async function removeMember(id: string) {
+    if (!window.confirm("Remove this member from your agency team?")) return;
+    try {
+      await api.delete(`/api/agency/team/${id}`);
+      setTeam((current) => current.filter((member) => member.id !== id));
+    } catch (err) { setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't remove team member." }); }
+  }
+
+  async function saveAccountSettings(next: AccountSettings) {
+    const previous = accountSettings;
+    setAccountSettings(next);
+    setTheme(next.displayMode);
+    document.documentElement.lang = next.language.split("-")[0];
+    setSavingSettings(true);
+    try {
+      const saved = await api.patch<AccountSettings>("/api/agency/settings", next);
+      setAccountSettings(saved);
+      setTheme(saved.displayMode);
+      document.documentElement.lang = saved.language.split("-")[0];
+      setMessage({ type: "success", text: "Regional and display preferences saved." });
+    } catch (err) {
+      setAccountSettings(previous);
+      setTheme(previous.displayMode);
+      document.documentElement.lang = previous.language.split("-")[0];
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't save preferences." });
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function saveNotifPref(key: keyof NotifPrefs, value: boolean) {
+    setNotifPrefs((prev) => ({ ...prev, [key]: value }));
+    await api.patch("/api/agency/notification-preferences", { [key]: value }).catch(() => {});
+  }
+
+  async function handleChangePassword() {
+    setMessage(null);
+    if (newPassword.length < 8) {
+      setMessage({ type: "error", text: "New password should be at least 8 characters." });
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.post("/api/auth/change-password", { currentPassword, newPassword });
+      setMessage({ type: "success", text: "Password updated successfully." });
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't update your password." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <div className="bg-surface text-on-surface">
-      <PublicNavbar variant="glass" />
+    <>
+<AgencySidebar />
 
-      <main>
-        {/* Hero */}
-        <section className="relative min-h-[400px] flex items-center px-4 md:px-margin-desktop py-10 overflow-hidden bg-surface">
-          <div className="container mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-2 py-0.5 bg-primary-container/10 text-primary rounded-full font-label-md mb-4">
-                <span className="material-symbols-outlined text-xs">
-                  verified
-                </span>
-                <span className="text-xs">
-                  Trusted by 500+ Global Universities
-                </span>
-              </div>
-              <h1 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-4 leading-tight">
-                Maximize Your Chances of Global Academic Success.
-              </h1>
-              <p className="font-body-md text-body-md text-on-surface-variant mb-6 leading-relaxed">
-                The all-in-one platform connecting ambitious students with
-                world-class universities using our proprietary{" "}
-                <b>MatchScore™</b> technology.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button href="/register" size="md">
-                  Find Your Match
-                </Button>
-                <Button href="/universities" variant="outline" size="md">
-                  Explore Programs
-                </Button>
-              </div>
-              <div className="mt-8 p-4 bg-surface-container-lowest rounded-xl premium-shadow border border-outline-variant/30 max-w-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-surface-container rounded flex items-center justify-center">
-                      <span className="material-symbols-outlined text-primary text-sm">
-                        school
-                      </span>
-                    </div>
-                    <div>
-                      <div className="font-bold text-on-surface text-sm">
-                        University of Oxford
-                      </div>
-                      <div className="text-[10px] text-outline">
-                        Computer Science, MSc
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-primary">98%</div>
-                    <div className="text-[8px] uppercase font-bold text-outline tracking-wider">
-                      MatchScore
-                    </div>
-                  </div>
-                </div>
-                <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-[98%] rounded-full" />
-                </div>
-              </div>
-            </div>
-            <div className="relative group">
-              <div className="absolute -inset-4 bg-primary/5 rounded-[40px] blur-2xl group-hover:bg-primary/10 transition-colors" />
-              <div className="relative rounded-[32px] overflow-hidden premium-shadow border border-white/50 aspect-[4/3]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  alt="Prestigious university campus"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  src="https://picsum.photos/seed/studybridge-campus/1200/900"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent" />
-              </div>
-              <div className="absolute -bottom-6 -left-6 bg-surface-container-lowest p-6 rounded-2xl premium-shadow border border-outline-variant/20 flex items-center gap-4">
-                <div className="h-12 w-12 bg-secondary-container/20 rounded-full flex items-center justify-center text-secondary">
-                  <span className="material-symbols-outlined">
-                    trending_up
-                  </span>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">
-                    3x Higher
-                  </div>
-                  <div className="text-xs text-outline">
-                    Admission Probability
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        {/* Social proof */}
-        <section className="bg-surface-container-lowest py-8 border-y border-outline-variant/30">
-          <div className="px-4 md:px-margin-desktop text-center">
-            <p className="font-label-md text-label-md uppercase tracking-[0.2em] text-outline mb-10">
-              Trusted by Global Institutions
-            </p>
-            <div className="flex flex-wrap justify-center items-center gap-x-16 gap-y-10 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-              {trustedNames.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-2 font-bold text-headline-sm text-primary"
-                >
-                  <span className="material-symbols-outlined text-3xl">
-                    {item.icon}
-                  </span>{" "}
-                  {item.label}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+{/* Top Bar Shell */}
+<header className="fixed top-0 left-[260px] right-0 h-20 bg-surface/80 backdrop-blur-md z-40 flex items-center justify-between px-gutter">
+<div className="flex items-center flex-1 max-w-xl">
+<div className="relative w-full group">
+<span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input className="w-full pl-12 pr-4 py-2.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-body-md font-body-md transition-all" placeholder="Search consultants, leads or settings..." type="text"/>
+</div>
+</div>
+<div className="flex items-center gap-6">
+<div className="flex items-center gap-2">
+<button className="p-2.5 hover:bg-surface-container-low rounded-lg transition-colors relative group">
+<span className="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+<div className="absolute top-full right-0 mt-2 w-64 bg-white p-4 rounded-xl shadow-xl border border-outline-variant/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+<p className="font-label-md text-label-md text-primary">Notifications</p>
+<p className="text-xs text-on-surface-variant mt-1">2 new student applications received.</p>
+</div>
+</button>
+<button className="p-2.5 hover:bg-surface-container-low rounded-lg transition-colors">
+<span className="material-symbols-outlined text-on-surface-variant">help_outline</span>
+</button>
+</div>
+<div className="h-8 w-[1px] bg-outline-variant/30"></div>
+<button className="flex items-center gap-3 pl-2 pr-1 py-1 hover:bg-surface-container-low rounded-full transition-colors">
+<div className="text-right hidden lg:block">
+<p className="text-body-md font-semibold text-primary leading-none">Global Agency Group</p>
+<p className="text-[11px] text-on-surface-variant mt-1">Premium Partner</p>
+</div>
+<div className="w-10 h-10 rounded-full border-2 border-primary-container overflow-hidden">
+<img className="w-full h-full object-cover" alt="A professional headshot of a corporate executive in a modern, well-lit office with a minimalist aesthetic. The lighting is soft and natural, emphasizing a clean and premium professional tone. The background features subtle blurred architectural details of a high-end educational consultancy firm." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEFuhJhwGmJMWTOFk3_SQUp_gGm3Az7_vpedLw2m4VCLGHBXS8lhTrHVkT67VBX2Uu5l4F1viZd4GS0-TNTc3-B0-ELGiYQKeMPz5e32CsGHXJePxTZaj23UdgiL6TA_X8NWQyuotHE7wBw2STqBv7pWBE7uMT_aReZyFAtmLPn6VoswP_uODtln3RvqfUHMa57VldPe1HrMuiajpZ4uvYtSZBvbwEFVLKaklR3fFUiT5_mWzRTzYv"/>
+</div>
+</button>
+</div>
+</header>
+{/* Main Content Canvas */}
+<main className="ml-[260px] mt-20 p-margin-desktop min-h-[calc(100vh-80px)]">
+{/* Header Section */}
+<div className="mb-10 flex justify-between items-end">
+<div>
+<h2 className="font-headline-lg text-headline-lg text-primary">Agency Settings</h2>
+<p className="text-body-lg font-body-lg text-on-surface-variant mt-1">Manage your agency&apos;s profile, security, and consulting team.</p>
+</div>
+<div className="flex items-center gap-2 rounded-full bg-surface-container-low px-4 py-2 text-label-md font-semibold text-on-surface-variant">
+<span className="material-symbols-outlined text-[18px] text-secondary">cloud_done</span>
+Preferences save automatically
+</div>
+</div>
+{/* Settings Bento Grid */}
+<div className="grid grid-cols-12 gap-card-gap">
+{/* Account Security Card */}
+<section className="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-[24px] p-container-padding card-shadow">
+<div className="flex items-center gap-3 mb-8">
+<div className="w-10 h-10 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span className="material-symbols-outlined text-primary">security</span>
+</div>
+<h3 className="font-headline-sm text-headline-sm text-primary">Account Security</h3>
+</div>
+<div className="max-w-xl">
+<div className="space-y-6">
+<div>
+<label className="block text-label-md font-label-md text-on-surface-variant mb-2">Change Password</label>
+<div className="relative mb-3">
+<input
+  className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 pr-12 text-body-md focus:ring-2 focus:ring-primary/20"
+  placeholder="Current Password"
+  type={showCurrentPassword ? "text" : "password"}
+  value={currentPassword}
+  onChange={(e) => setCurrentPassword(e.target.value)}
+/>
+<button type="button" onClick={() => setShowCurrentPassword((visible) => !visible)} aria-label={showCurrentPassword ? "Hide current password" : "Show current password"} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-outline hover:text-primary transition-colors">
+<span className="material-symbols-outlined text-[20px]">{showCurrentPassword ? "visibility_off" : "visibility"}</span>
+</button>
+</div>
+<div className="relative">
+<input
+  className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 pr-12 text-body-md focus:ring-2 focus:ring-primary/20"
+  placeholder="New Password"
+  type={showNewPassword ? "text" : "password"}
+  value={newPassword}
+  onChange={(e) => setNewPassword(e.target.value)}
+/>
+<button type="button" onClick={() => setShowNewPassword((visible) => !visible)} aria-label={showNewPassword ? "Hide new password" : "Show new password"} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-outline hover:text-primary transition-colors">
+<span className="material-symbols-outlined text-[20px]">{showNewPassword ? "visibility_off" : "visibility"}</span>
+</button>
+</div>
+{message && (
+  <p className={`text-[11px] mt-2 ${message.type === "success" ? "text-primary" : "text-error"}`}>{message.text}</p>
+)}
+<button
+  onClick={handleChangePassword}
+  disabled={saving || !currentPassword || !newPassword}
+  className="mt-3 bg-primary text-on-primary px-5 py-2 rounded-xl font-label-md text-label-md font-bold disabled:opacity-50"
+>
+  {saving ? "Updating..." : "Update Password"}
+</button>
+</div>
+</div>
+</div>
+</section>
+{/* Billing & Subscription Status */}
+<section className="col-span-12 lg:col-span-4 bg-primary dark:bg-[#1f3f91] text-white rounded-[24px] p-container-padding card-shadow relative overflow-hidden group">
+{/* Visual Decoration */}
+<div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+<div className="relative z-10">
+<div className="flex justify-between items-start mb-10">
+<div>
+<span className="px-3 py-1 bg-secondary-container dark:bg-[#6f8fff] text-on-secondary-container dark:text-[#0b256d] rounded-full text-[10px] font-bold uppercase tracking-wider">Premium Agency</span>
+<h3 className="font-headline-md text-headline-md mt-3">StudyBridge Plus</h3>
+</div>
+<span className="material-symbols-outlined text-white/50">verified</span>
+</div>
+<div className="space-y-4 mb-10">
+<div className="flex justify-between items-center text-sm">
+<span className="text-primary-fixed-dim dark:text-[#dce5ff]">Next billing date</span>
+<span className="font-bold">Oct 12, 2024</span>
+</div>
+<div className="flex justify-between items-center text-sm">
+<span className="text-primary-fixed-dim dark:text-[#dce5ff]">Active Consultants</span>
+<span className="font-bold">12 / 20</span>
+</div>
+<div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+<div className="h-full bg-secondary-container dark:bg-[#93aaff] w-3/5"></div>
+</div>
+</div>
+<div className="grid grid-cols-2 gap-3">
+<button disabled className="py-3 bg-white/15 text-white rounded-xl text-label-md font-semibold opacity-70 cursor-not-allowed">Manage Plan (coming soon)</button>
+<button disabled className="py-3 bg-white/25 text-white rounded-xl text-label-md font-bold opacity-70 cursor-not-allowed">Payment Methods (coming soon)</button>
+</div>
+</div>
+</section>
+{/* Notification Preferences */}
+<section className="col-span-12 lg:col-span-5 bg-surface-container-lowest rounded-[24px] p-container-padding card-shadow">
+<div className="flex items-center gap-3 mb-6">
+<div className="w-10 h-10 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span className="material-symbols-outlined text-primary">notifications_active</span>
+</div>
+<h3 className="font-headline-sm text-headline-sm text-primary">Notification Preferences</h3>
+</div>
+<div className="space-y-6">
+<div className="flex items-center justify-between py-2 border-b border-outline-variant/20">
+<div>
+<p className="font-body-lg font-semibold text-primary">New Lead Alerts</p>
+<p className="text-xs text-on-surface-variant">Email when a new student links to your agency.</p>
+</div>
+<div className="flex flex-col items-center gap-1">
+<span className="text-[10px] text-outline uppercase font-bold">Email</span>
+<input
+  checked={notifPrefs.emailOnNewStudentLead}
+  onChange={(e) => saveNotifPref("emailOnNewStudentLead", e.target.checked)}
+  className="w-5 h-5 text-primary rounded focus:ring-primary/20 bg-surface-container-high border-none"
+  type="checkbox"
+/>
+</div>
+</div>
+<div className="flex items-center justify-between py-2 border-b border-outline-variant/20">
+<div>
+<p className="font-body-lg font-semibold text-primary">Status Updates</p>
+<p className="text-xs text-on-surface-variant">Email when a student's application status changes.</p>
+</div>
+<div className="flex flex-col items-center gap-1">
+<span className="text-[10px] text-outline uppercase font-bold">Email</span>
+<input
+  checked={notifPrefs.emailOnApplicationUpdate}
+  onChange={(e) => saveNotifPref("emailOnApplicationUpdate", e.target.checked)}
+  className="w-5 h-5 text-primary rounded focus:ring-primary/20 bg-surface-container-high border-none"
+  type="checkbox"
+/>
+</div>
+</div>
+<div className="flex items-center justify-between py-2 border-b border-outline-variant/20">
+<div>
+<p className="font-body-lg font-semibold text-primary">New Messages</p>
+<p className="text-xs text-on-surface-variant">Email when a student sends you a message.</p>
+</div>
+<div className="flex flex-col items-center gap-1">
+<span className="text-[10px] text-outline uppercase font-bold">Email</span>
+<input
+  checked={notifPrefs.emailOnMessage}
+  onChange={(e) => saveNotifPref("emailOnMessage", e.target.checked)}
+  className="w-5 h-5 text-primary rounded focus:ring-primary/20 bg-surface-container-high border-none"
+  type="checkbox"
+/>
+</div>
+</div>
+</div>
+</section>
+{/* Regional & display preferences */}
+<section className="col-span-12 lg:col-span-5 rounded-[24px] bg-surface-container-lowest dark:bg-[#202126] p-container-padding card-shadow border border-outline-variant/15 dark:border-white/5">
+<div className="flex items-center gap-3 mb-7">
+<div className="w-11 h-11 rounded-full bg-primary-container dark:bg-[#dce1ff] flex items-center justify-center">
+<span className="material-symbols-outlined text-primary dark:text-[#1b347a]">language</span>
+</div>
+<div>
+<h3 className="font-headline-sm text-headline-sm text-primary dark:text-white">Regional</h3>
+<p className="text-label-md text-on-surface-variant dark:text-[#bfc3ce] mt-0.5">Language, timezone and currency</p>
+</div>
+</div>
+<div className="space-y-5">
+<label className="block">
+<span className="block text-label-md font-semibold text-on-surface-variant dark:text-[#d7dbe5] mb-2">Display Language</span>
+<select value={accountSettings.language} onChange={(e) => saveAccountSettings({ ...accountSettings, language: e.target.value as AccountSettings["language"] })} disabled={savingSettings} className="w-full appearance-none rounded-2xl bg-surface-container-low dark:bg-[#292a30] px-4 py-3 text-body-md text-on-surface dark:text-white border-0 focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
+<option value="en-GB">English (United Kingdom)</option>
+<option value="en-US">English (United States)</option>
+<option value="fr-FR">Français</option>
+<option value="es-ES">Español</option>
+<option value="de-DE">Deutsch</option>
+</select>
+</label>
+<label className="block">
+<span className="block text-label-md font-semibold text-on-surface-variant dark:text-[#d7dbe5] mb-2">Timezone</span>
+<select value={accountSettings.timezone} onChange={(e) => saveAccountSettings({ ...accountSettings, timezone: e.target.value as AccountSettings["timezone"] })} disabled={savingSettings} className="w-full appearance-none rounded-2xl bg-surface-container-low dark:bg-[#292a30] px-4 py-3 text-body-md text-on-surface dark:text-white border-0 focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
+<option value="Etc/GMT">(GMT+00:00) Greenwich Mean Time</option>
+<option value="Europe/Paris">(GMT+01:00) Central European Time</option>
+<option value="America/New_York">(GMT-05:00) Eastern Time</option>
+</select>
+</label>
+<label className="block">
+<span className="block text-label-md font-semibold text-on-surface-variant dark:text-[#d7dbe5] mb-2">Currency</span>
+<select value={accountSettings.currency} onChange={(e) => saveAccountSettings({ ...accountSettings, currency: e.target.value as AccountSettings["currency"] })} disabled={savingSettings} className="w-full appearance-none rounded-2xl bg-surface-container-low dark:bg-[#292a30] px-4 py-3 text-body-md text-on-surface dark:text-white border-0 focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
+<option value="GBP">GBP (£)</option>
+<option value="USD">USD ($)</option>
+<option value="EUR">EUR (€)</option>
+</select>
+</label>
+</div>
+<div className="mt-8 rounded-[22px] bg-surface-container-low dark:bg-[#292a30] p-5">
+<p className="font-body-lg font-bold text-primary dark:text-[#4d74ee]">Display Mode</p>
+<p className="text-label-md text-on-surface-variant dark:text-[#9ba4bf] mt-1">Choose how StudyBridge looks on your device.</p>
+<div className="mt-5 flex gap-3">
+<button type="button" onClick={() => saveAccountSettings({ ...accountSettings, displayMode: "light" })} disabled={savingSettings} className={`flex items-center gap-2 rounded-full px-5 py-3 text-label-md font-bold border transition-all ${accountSettings.displayMode === "light" ? "bg-white text-primary border-primary shadow-sm" : "bg-transparent text-on-surface-variant dark:text-[#c5cad7] border-outline-variant/50"}`}><span className="material-symbols-outlined">light_mode</span>Light</button>
+<button type="button" onClick={() => saveAccountSettings({ ...accountSettings, displayMode: "dark" })} disabled={savingSettings} className={`flex items-center gap-2 rounded-full px-5 py-3 text-label-md font-bold border transition-all ${accountSettings.displayMode === "dark" ? "bg-[#4168db] text-white border-[#7796ff] shadow-lg shadow-[#4168db]/30" : "bg-transparent text-on-surface-variant dark:text-[#c5cad7] border-outline-variant/50"}`}><span className="material-symbols-outlined">dark_mode</span>Dark</button>
+</div>
+{message && <p className={`mt-4 text-label-md font-medium ${message.type === "success" ? "text-secondary dark:text-[#9cc9a0]" : "text-error"}`}>{message.text}</p>}
+</div>
+</section>
+{/* Team Management */}
+<section className="col-span-12 lg:col-span-7 bg-surface-container-lowest rounded-[24px] p-container-padding card-shadow">
+<div className="flex justify-between items-center mb-8">
+<div className="flex items-center gap-3">
+<div className="w-10 h-10 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span className="material-symbols-outlined text-primary">group_add</span>
+</div>
+<h3 className="font-headline-sm text-headline-sm text-primary">Team Management</h3>
+</div>
+<button type="button" onClick={() => setShowInvite((open) => !open)} className="flex items-center gap-2 text-primary font-bold px-4 py-2 rounded-xl hover:bg-primary/5 transition-colors">
+<span className="material-symbols-outlined text-sm">person_add</span>
+<span className="text-label-md">Invite Consultant</span>
+</button>
+</div>
+{showInvite && <div className="mb-6 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-3 rounded-2xl bg-surface-container-low p-4">
+<input value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="rounded-xl border-0 bg-surface-container-lowest px-3 py-2.5 text-body-md focus:ring-2 focus:ring-primary/20" placeholder="Consultant name" />
+<input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="rounded-xl border-0 bg-surface-container-lowest px-3 py-2.5 text-body-md focus:ring-2 focus:ring-primary/20" placeholder="Email address" type="email" />
+<select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as TeamRole)} className="rounded-xl border-0 bg-surface-container-lowest px-3 py-2.5 text-body-md focus:ring-2 focus:ring-primary/20">{TEAM_ROLES.map((role) => <option key={role}>{role}</option>)}</select>
+<button type="button" onClick={inviteMember} disabled={inviting || !inviteName.trim() || !inviteEmail.trim()} className="rounded-xl bg-primary px-4 py-2.5 font-label-md font-bold text-on-primary disabled:opacity-50">{inviting ? "Inviting..." : "Invite"}</button>
+</div>}
+<div className="overflow-x-auto">
+<table className="w-full">
+<thead>
+<tr className="text-left border-b border-outline-variant/30">
+<th className="pb-4 text-label-md text-on-surface-variant">Consultant</th>
+<th className="pb-4 text-label-md text-on-surface-variant">Role</th>
+<th className="pb-4 text-label-md text-on-surface-variant">Status</th>
+<th className="pb-4"></th>
+</tr>
+</thead>
+<tbody className="divide-y divide-outline-variant/10">
+{team.length === 0 && <tr><td colSpan={4} className="py-8 text-center text-body-md text-on-surface-variant">No team members yet. Invite your first consultant.</td></tr>}
+{team.map((member) => <tr key={member.id} className="hover:bg-surface-container-low/50 transition-colors">
+<td className="py-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center font-bold text-primary">{member.fullName.split(" ").map((name) => name[0]).join("").slice(0, 2).toUpperCase()}</div><div><p className="font-body-md font-semibold text-primary">{member.fullName}</p><p className="text-[11px] text-on-surface-variant">{member.email}</p></div></div></td>
+<td className="py-4"><select aria-label={`Role for ${member.fullName}`} value={member.role} onChange={(e) => updateMember(member, { role: e.target.value as TeamRole })} className="rounded-lg border-0 bg-surface-container px-2.5 py-1 text-xs font-medium focus:ring-2 focus:ring-primary/20">{TEAM_ROLES.map((role) => <option key={role}>{role}</option>)}</select></td>
+<td className="py-4"><button type="button" onClick={() => updateMember(member, { status: member.status === "active" ? "pending" : "active" })} className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-primary"><span className={`w-2 h-2 rounded-full ${member.status === "active" ? "bg-green-500" : "bg-outline-variant"}`}></span>{member.status === "active" ? "Active" : "Pending Invite"}</button></td>
+<td className="py-4 text-right"><button type="button" onClick={() => removeMember(member.id)} title="Remove team member" className="p-2 text-on-surface-variant hover:bg-error/10 hover:text-error rounded-lg transition-colors"><span className="material-symbols-outlined text-[20px]">delete_outline</span></button></td>
+</tr>)}
+</tbody>
+</table>
+</div>
+</section>
+</div>
+{/* Footer Shell */}
+<footer className="mt-20 py-gutter border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-6">
+<div className="flex flex-col md:flex-row items-center gap-6">
+<span className="font-headline-sm text-headline-sm font-bold text-primary">StudyBridge</span>
+<p className="font-body-md text-body-md text-on-surface-variant">© 2024 StudyBridge Global Education. All rights reserved.</p>
+</div>
+<div className="flex items-center gap-8">
+<Link className="text-on-surface-variant hover:text-primary transition-colors text-label-md font-label-md" href="/privacy">Privacy Policy</Link>
+<Link className="text-on-surface-variant hover:text-primary transition-colors text-label-md font-label-md" href="/terms">Terms of Service</Link>
+<Link className="text-on-surface-variant hover:text-primary transition-colors text-label-md font-label-md" href="/contact">Contact Support</Link>
+</div>
+</footer>
+</main>
 
-        <FeaturedUniversities />
 
-        {/* Audience pillars */}
-        <section className="py-12 px-4 md:px-margin-desktop bg-surface-container-low">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="font-headline-lg text-headline-lg text-primary mb-4">
-                Tailored Solutions for the Academic Ecosystem
-              </h2>
-              <p className="text-on-surface-variant max-w-2xl mx-auto">
-                Modern infrastructure designed for students, recruitment
-                partners, and higher-ed institutions.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {audiences.map((a) => (
-                <div
-                  key={a.title}
-                  className={`p-6 rounded-2xl premium-shadow border card-hover transition-all flex flex-col relative overflow-hidden ${
-                    a.theme === "dark"
-                      ? "bg-primary text-on-primary border-transparent"
-                      : "bg-surface-container-lowest border-outline-variant/10"
-                  }`}
-                >
-                  {a.theme === "dark" && (
-                    <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
-                  )}
-                  <div
-                    className={`h-10 w-10 ${a.iconBg} ${a.accent} rounded-xl flex items-center justify-center mb-4 relative z-10`}
-                  >
-                    <span className="material-symbols-outlined text-2xl">
-                      {a.icon}
-                    </span>
-                  </div>
-                  <h3
-                    className={`font-headline-sm text-headline-sm mb-2 relative z-10 ${
-                      a.theme === "dark" ? "text-white" : "text-primary"
-                    }`}
-                  >
-                    {a.title}
-                  </h3>
-                  <p
-                    className={`font-body-md mb-4 flex-grow leading-relaxed relative z-10 ${
-                      a.theme === "dark"
-                        ? "text-primary-container"
-                        : "text-on-surface-variant"
-                    }`}
-                  >
-                    {a.body}
-                  </p>
-                  <ul className="space-y-2 mb-6 relative z-10">
-                    {a.points.map((p) => (
-                      <li
-                        key={p}
-                        className={`flex items-center gap-2 text-body-md ${
-                          a.theme === "dark"
-                            ? "text-on-primary/80"
-                            : "text-on-surface-variant"
-                        }`}
-                      >
-                        <span
-                          className={`material-symbols-outlined text-xs ${
-                            a.theme === "dark" ? "text-on-primary/60" : a.accent
-                          }`}
-                        >
-                          check_circle
-                        </span>{" "}
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href="/register"
-                    className={`font-bold flex items-center gap-2 group text-body-md relative z-10 ${
-                      a.theme === "dark" ? "text-white" : "text-primary"
-                    }`}
-                  >
-                    {a.cta}{" "}
-                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-sm">
-                      arrow_forward
-                    </span>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Stats */}
-        <section className="py-12 bg-surface">
-          <div className="px-4 md:px-margin-desktop max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-            <div>
-              <h2 className="font-display-lg text-4xl md:text-display-lg text-primary mb-8">
-                Empowering Excellence Through Data.
-              </h2>
-              <p className="font-body-lg text-body-lg text-on-surface-variant mb-12 leading-relaxed">
-                Our platform is engineered to remove friction from global
-                education. We provide the structural beauty and modern tools
-                required for elite academic success.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {stats.map((s) => (
-                  <div
-                    key={s.label}
-                    className="p-8 bg-surface-container-lowest rounded-3xl border border-outline-variant/30 premium-shadow"
-                  >
-                    <div className="text-4xl font-bold text-primary mb-2">
-                      {s.value}
-                    </div>
-                    <div className="text-sm font-semibold text-outline uppercase tracking-wider">
-                      {s.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="relative">
-              <div className="bg-surface-container-lowest rounded-[32px] p-8 premium-shadow border border-outline-variant/20 overflow-hidden relative">
-                <div className="flex items-center justify-between mb-8 pb-4 border-b border-outline-variant/20">
-                  <div className="font-bold text-primary">
-                    Performance Insights
-                  </div>
-                  <span className="material-symbols-outlined text-outline">
-                    insights
-                  </span>
-                </div>
-                <div className="space-y-8">
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <div className="text-3xl font-bold text-primary">
-                        45k
-                      </div>
-                      <div className="text-xs text-outline font-bold">
-                        Successful Placements
-                      </div>
-                    </div>
-                    <div className="w-32 h-16 bg-surface-container-low rounded-lg overflow-hidden relative">
-                      <svg
-                        className="absolute inset-0 w-full h-full text-secondary opacity-20"
-                        viewBox="0 0 100 40"
-                      >
-                        <path
-                          d="M0,40 L10,35 L20,38 L30,25 L40,30 L50,15 L60,20 L70,5 L80,10 L90,2 L100,8 L100,40 Z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-bold text-on-surface-variant">
-                      <span>Global Admissions Target</span>
-                      <span>85% achieved</span>
-                    </div>
-                    <div className="h-3 w-full bg-surface-container rounded-full overflow-hidden">
-                      <div className="h-full bg-secondary w-[85%] rounded-full shadow-[0_0_12px_rgba(49,86,196,0.4)]" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="h-24 bg-surface-container-low rounded-xl" />
-                    <div className="h-24 bg-primary/5 rounded-xl" />
-                    <div className="h-24 bg-secondary/5 rounded-xl" />
-                  </div>
-                </div>
-              </div>
-              <div className="absolute -top-10 -right-10 w-40 h-40 border-[20px] border-secondary/5 rounded-full -z-10" />
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonial */}
-        <section className="py-12 px-4 md:px-margin-desktop">
-          <div className="max-w-4xl mx-auto bg-primary text-on-primary rounded-3xl p-8 md:p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-8">
-            <div className="absolute top-0 right-0 p-6 opacity-5">
-              <span className="material-symbols-outlined text-[100px]">
-                format_quote
-              </span>
-            </div>
-            <div className="w-40 h-40 rounded-2xl overflow-hidden border-4 border-white/20 shrink-0 shadow-2xl rotate-3 transition-transform hover:rotate-0 duration-500">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                alt="Student portrait"
-                className="w-full h-full object-cover"
-                src="https://picsum.photos/seed/studybridge-student/400/400"
-              />
-            </div>
-            <div className="relative z-10">
-              <div className="flex gap-1 text-secondary-container mb-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="material-symbols-outlined text-xs"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    star
-                  </span>
-                ))}
-              </div>
-              <p className="font-headline-sm text-headline-sm mb-6 leading-relaxed font-medium italic">
-                &ldquo;StudyBridge didn&apos;t just help me find a university;
-                they helped me architect my entire professional future. The
-                clarity of the platform and the MatchScore precision are
-                truly world-class.&rdquo;
-              </p>
-              <div>
-                <div className="font-bold text-body-lg">
-                  Alexander Sterling
-                </div>
-                <div className="text-on-primary/60 font-body-md">
-                  MBA Candidate, INSEAD
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="py-16 text-center px-4 md:px-margin-desktop bg-surface-container-lowest">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="font-display-lg text-4xl md:text-display-lg text-primary mb-8">
-              Ready to Start Your Academic Journey?
-            </h2>
-            <p className="font-body-lg text-body-lg text-on-surface-variant mb-12 max-w-2xl mx-auto">
-              Join the global network of excellence and let data-driven
-              matching guide your future.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-6">
-              <Button href="/register" size="lg">
-                Create Your Free Profile
-              </Button>
-              <Button href="/universities" variant="outline" size="lg">
-                View Universities
-              </Button>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <PublicFooter />
-    </div>
+</>
   );
 }
