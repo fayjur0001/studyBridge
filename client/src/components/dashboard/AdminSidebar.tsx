@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 const NAV_ITEMS = [
   { href: "/admin/overview", icon: "dashboard", label: "Overview" },
@@ -17,9 +18,16 @@ const SETTINGS_HREF = "/admin/settings";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
 
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
+
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+  }
 
   return (
     <aside className="fixed h-screen w-[260px] left-0 top-0 bg-primary dark:bg-[#10172f] shadow-2xl flex flex-col py-8 z-50 overflow-y-auto custom-scrollbar">
@@ -61,6 +69,14 @@ export default function AdminSidebar() {
           <span className="material-symbols-outlined">settings</span>
           <span className="font-label-md text-label-md">Settings</span>
         </Link>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="text-on-primary/80 dark:text-[#bdc9ff] px-8 py-3 flex items-center gap-3 hover:bg-primary-container/20 dark:hover:bg-white/10 hover:text-on-primary dark:hover:text-white transition-colors text-left"
+        >
+          <span className="material-symbols-outlined">logout</span>
+          <span className="font-label-md text-label-md">Logout</span>
+        </button>
       </nav>
     </aside>
   );

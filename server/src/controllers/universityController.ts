@@ -15,7 +15,7 @@ const listQuerySchema = paginationSchema.extend({
   country: z.string().trim().min(1).optional(),
   region: z.string().trim().min(1).optional(),
   maxRanking: z.coerce.number().int().positive().optional(),
-  sort: z.enum(["ranking", "name"]).default("ranking"),
+  sort: z.enum(["ranking", "name", "newest"]).default("ranking"),
 });
 
 export async function listUniversities(req: Request, res: Response) {
@@ -33,7 +33,12 @@ export async function listUniversities(req: Request, res: Response) {
   if (q.maxRanking) conditions.push(lte(universities.ranking, q.maxRanking));
 
   const where = conditions.length ? and(...conditions) : undefined;
-  const orderBy = q.sort === "name" ? asc(universities.name) : asc(universities.ranking);
+  const orderBy =
+    q.sort === "name"
+      ? asc(universities.name)
+      : q.sort === "newest"
+        ? desc(universities.createdAt)
+        : asc(universities.ranking);
 
   const offset = (q.page - 1) * q.limit;
 

@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/lib/auth-context";
+import { getCurrentTheme, setTheme, ThemeMode } from "@/lib/theme";
 
 const links = [
   { label: "Universities", href: "/universities" },
@@ -22,6 +24,18 @@ export default function PublicNavbar({
 }: PublicNavbarProps) {
   const { user, loading } = useAuth();
   const dashboardHref = user?.role === "student" ? "/student/dashboard" : user?.role === "agency" ? "/agency/dashboard" : "/admin/overview";
+
+  // Public pages previously had no way to switch themes at all — dark mode
+  // only existed inside a logged-in dashboard's Settings page. Read whatever
+  // the inline anti-flash script (or a dashboard preference) already applied
+  // as the initial state, then let visitors flip it from here too.
+  const [mode, setMode] = useState<ThemeMode>(() => getCurrentTheme());
+
+  function toggleTheme() {
+    const next: ThemeMode = mode === "dark" ? "light" : "dark";
+    setTheme(next);
+    setMode(next);
+  }
   const wrapperClass =
     variant === "glass"
       ? "sticky top-0 w-full z-50 glass-header border-b border-outline-variant/30"
@@ -52,6 +66,16 @@ export default function PublicNavbar({
           ))}
         </div>
         <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="h-10 w-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors"
+          >
+            <span className="material-symbols-outlined text-xl">
+              {mode === "dark" ? "light_mode" : "dark_mode"}
+            </span>
+          </button>
           {!loading && user ? (
             <Link href={dashboardHref} className="inline-flex items-center gap-2 rounded-xl bg-primary text-on-primary px-4 py-2.5 font-bold text-sm hover:opacity-90 transition-opacity"><span className="material-symbols-outlined text-lg">arrow_back</span>Back to Dashboard</Link>
           ) : !loading ? <><Link href="/login" className="hidden sm:block font-body-md font-bold text-primary hover:opacity-80 transition-all">Log In</Link><Button href="/register" size="sm">Get Started</Button></> : null}

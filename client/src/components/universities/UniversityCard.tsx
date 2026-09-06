@@ -1,16 +1,31 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { University } from "@/lib/types";
-import { universityImage } from "@/lib/university-images";
+import { resolveImageUrl, universityImage, universityImageFallback } from "@/lib/university-images";
 
 export default function UniversityCard({ university }: { university: University }) {
+  // If the real cover photo URL 404s or otherwise fails to load (e.g. a bad
+  // upload path), fall back to the local placeholder instead of leaving the
+  // card blank.
+  const [coverSrc, setCoverSrc] = useState(() =>
+    universityImage(university.name, university.coverImageUrl, university.logoUrl)
+  );
+  const [logoFailed, setLogoFailed] = useState(false);
+  const logoSrc = university.logoUrl ? resolveImageUrl(university.logoUrl) : null;
+
   return (
     <div className="bg-surface-container-lowest rounded-[24px] premium-shadow premium-shadow-hover transition-all duration-300 overflow-hidden flex flex-col group border border-outline-variant/10">
       <div className="h-48 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
-        <div
-          className="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500"
-          style={{ backgroundImage: `url('${universityImage(university.name, university.coverImageUrl, university.logoUrl)}')` }}
-        ></div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={coverSrc}
+          alt={university.name}
+          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={() => setCoverSrc(universityImageFallback())}
+        />
         {university.ranking && (
           <div className="absolute top-4 right-4 z-20 bg-primary/90 text-white backdrop-blur-md px-3 py-1.5 rounded-full font-label-md flex items-center gap-1.5">
             <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -22,8 +37,14 @@ export default function UniversityCard({ university }: { university: University 
       </div>
       <div className="p-8 flex flex-col flex-1 relative">
         <div className="absolute -top-10 left-8 h-16 w-16 bg-white rounded-2xl premium-shadow p-2 flex items-center justify-center z-20 border border-outline-variant/20">
-          {university.logoUrl ? (
-            <img className="h-10 w-10 object-contain" alt={university.name} src={university.logoUrl} />
+          {logoSrc && !logoFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              className="h-10 w-10 object-contain"
+              alt={university.name}
+              src={logoSrc}
+              onError={() => setLogoFailed(true)}
+            />
           ) : (
             <span className="material-symbols-outlined text-3xl text-primary">school</span>
           )}

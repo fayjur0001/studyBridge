@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { api, setAccessToken, tryRefresh } from "./api";
 import { AuthUser, Role } from "./types";
+import { setTheme } from "./theme";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -26,14 +27,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // Apply each dashboard user's saved appearance preference on every page,
-  // not only after visiting the Settings screen.
+  // not only after visiting the Settings screen. Persisting it via setTheme
+  // (rather than toggling the class directly) means the choice also sticks
+  // on the public site after logout, instead of only inside the dashboard.
   useEffect(() => {
     const settingsPath = user?.role === "student" ? "/api/student/settings" : user?.role === "agency" ? "/api/agency/settings" : user?.role === "admin" ? "/api/admin/settings" : null;
     if (!settingsPath) return;
     api
       .get<{ displayMode: "light" | "dark"; language: string }>(settingsPath)
       .then(({ displayMode, language }) => {
-        document.documentElement.classList.toggle("dark", displayMode === "dark");
+        setTheme(displayMode);
         document.documentElement.lang = language.split("-")[0] || "en";
       })
       .catch(() => {});
