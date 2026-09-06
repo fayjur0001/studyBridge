@@ -1,86 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import AgencySidebar from "@/components/dashboard/AgencySidebar";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 
 interface Analytics {
-  totalApplications: number;
+  totalApplications: number; activeApplications: number; acceptedApplications: number; rejectedApplications: number; documentsRequested: number; totalStudents: number; acceptanceRate: number; statusCounts: Record<string, number>;
   conversionByCountry: { country: string; total: number; accepted: number; conversionRate: number }[];
   monthlyVolume: { month: string; count: number }[];
+  recentApplications: { programName: string; universityName: string; status: string; createdAt: string }[];
 }
 
+const STATUS: Record<string, { label: string; color: string }> = {
+  draft: { label: "Draft", color: "bg-outline" }, submitted: { label: "Submitted", color: "bg-secondary" }, under_review: { label: "Under review", color: "bg-primary" }, documents_requested: { label: "Docs requested", color: "bg-amber-500" }, accepted: { label: "Accepted", color: "bg-emerald-500" }, rejected: { label: "Rejected", color: "bg-error" },
+};
+
 export default function AgencyAnalyticsPage() {
-  const { user } = useAuth();
-  const [data, setData] = useState<Analytics | null>(null);
-
-  useEffect(() => {
-    api.get<Analytics>("/api/agency/analytics").then(setData).catch(() => {});
-  }, []);
-
-  const maxCountryTotal = Math.max(1, ...(data?.conversionByCountry.map((c) => c.total) ?? [1]));
-  const maxMonthCount = Math.max(1, ...(data?.monthlyVolume.map((m) => m.count) ?? [1]));
-
-  return (
-    <>
-<AgencySidebar />
-
-<main className="ml-[260px] min-h-screen">
-
-<header className="sticky top-0 w-full z-40 bg-surface/80 backdrop-blur-md flex justify-between items-center px-gutter py-4 h-20">
-<h2 className="font-headline-lg text-headline-lg text-primary tracking-tight">Performance Analytics</h2>
-<div className="flex items-center gap-3">
-<div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center font-bold text-primary">
-{user?.fullName?.[0] ?? "A"}
-</div>
-</div>
-</header>
-
-<div className="p-margin-desktop grid grid-cols-12 gap-card-gap">
-
-<div className="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-[24px] p-container-padding ambient-occlusion">
-<h3 className="font-headline-sm text-headline-sm text-on-surface mb-6">Conversion Rate by Country</h3>
-{(!data || data.conversionByCountry.length === 0) && (
-  <p className="text-on-surface-variant font-body-md">No applications yet — this will fill in once your students start applying.</p>
-)}
-<div className="space-y-4">
-{data?.conversionByCountry.map((c) => (
-<div key={c.country}>
-<div className="flex justify-between font-label-md text-label-md mb-1">
-<span className="font-bold text-on-surface">{c.country}</span>
-<span className="text-on-surface-variant">{c.accepted}/{c.total} accepted ({c.conversionRate}%)</span>
-</div>
-<div className="h-3 bg-surface-container-low rounded-full overflow-hidden">
-<div className="h-full bg-primary rounded-full" style={{ width: `${(c.total / maxCountryTotal) * 100}%` }}></div>
-</div>
-</div>
-))}
-</div>
-</div>
-
-<div className="col-span-12 lg:col-span-4 bg-primary text-on-primary rounded-[24px] p-container-padding flex flex-col justify-between">
-<p className="text-primary-fixed-dim text-sm uppercase tracking-widest font-bold">Total Applications</p>
-<h4 className="text-[40px] font-bold mt-2">{data?.totalApplications ?? 0}</h4>
-<p className="text-primary-fixed-dim font-body-md mt-4">Across all students linked to your agency.</p>
-</div>
-
-<div className="col-span-12 bg-surface-container-lowest rounded-[24px] p-container-padding ambient-occlusion">
-<h3 className="font-headline-sm text-headline-sm text-on-surface mb-6">Monthly Application Volume</h3>
-{(!data || data.monthlyVolume.length === 0) && (
-  <p className="text-on-surface-variant font-body-md">No data yet.</p>
-)}
-<div className="flex items-end gap-3 h-40">
-{data?.monthlyVolume.map((m) => (
-<div key={m.month} className="flex-1 flex flex-col items-center justify-end gap-2">
-<div className="w-full bg-primary/80 rounded-t-lg transition-all" style={{ height: `${(m.count / maxMonthCount) * 100}%`, minHeight: 4 }}></div>
-<span className="text-[10px] text-on-surface-variant font-bold">{m.month}</span>
-</div>
-))}
-</div>
-</div>
-</div>
-</main>
-    </>
-  );
+  const { user } = useAuth(); const [data, setData] = useState<Analytics | null>(null); const [loading, setLoading] = useState(true);
+  useEffect(() => { api.get<Analytics>("/api/agency/analytics").then(setData).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const maxCountry = Math.max(1, ...(data?.conversionByCountry.map((item) => item.total) ?? [1]));
+  const maxMonth = Math.max(1, ...(data?.monthlyVolume.map((item) => item.count) ?? [1]));
+  const metrics = data ? [
+    ["Applications", data.totalApplications, "assignment", "bg-primary-container text-on-primary-container"], ["Active pipeline", data.activeApplications, "pending_actions", "bg-secondary-fixed text-on-secondary-fixed"], ["Acceptance rate", `${data.acceptanceRate}%`, "trending_up", "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"], ["Linked students", data.totalStudents, "group", "bg-tertiary-fixed text-on-tertiary-fixed"],
+  ] : [];
+  return <><AgencySidebar /><main className="ml-[260px] min-h-screen bg-background"><header className="sticky top-0 z-40 h-20 px-gutter flex items-center justify-between bg-surface/90 backdrop-blur-md border-b border-outline-variant/20"><div><p className="text-label-md text-on-surface-variant uppercase tracking-[.18em] font-bold">Agency workspace</p><h1 className="font-headline-lg text-primary">Performance analytics</h1></div><div className="flex items-center gap-3"><Link href="/agency/applications" className="hidden sm:inline-flex px-4 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold">Review applications</Link><div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">{user?.fullName?.[0] ?? "A"}</div></div></header><div className="p-margin-desktop max-w-[1500px] mx-auto space-y-6"><div className="flex flex-col md:flex-row md:items-end justify-between gap-3"><div><h2 className="font-headline-md text-on-surface">Your admissions performance</h2><p className="text-on-surface-variant mt-1">Live insights from applications of your linked students.</p></div><p className="text-sm text-on-surface-variant flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded-full" /> Live data</p></div>{loading ? <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">{[1,2,3,4].map((item) => <div key={item} className="h-36 rounded-3xl bg-surface-container-low animate-pulse" />)}</div> : <>{<section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">{metrics.map(([label, value, icon, tone]) => <div key={String(label)} className="rounded-3xl p-6 bg-surface-container-lowest border border-outline-variant/20 shadow-sm"><div className={`w-11 h-11 rounded-xl flex items-center justify-center ${tone}`}><span className="material-symbols-outlined">{icon}</span></div><p className="mt-5 text-sm text-on-surface-variant">{label}</p><p className="mt-1 text-3xl font-bold text-on-surface">{value}</p></div>)}</section>}{data?.totalApplications === 0 ? <section className="rounded-3xl bg-surface-container-lowest border border-outline-variant/20 p-12 text-center"><span className="material-symbols-outlined text-primary text-5xl">insights</span><h2 className="font-headline-sm text-on-surface mt-4">Your analytics will appear here</h2><p className="text-on-surface-variant mt-2">Link students and track their applications to unlock this dashboard.</p><Link href="/agency/students" className="inline-flex mt-6 bg-primary text-on-primary px-5 py-3 rounded-xl font-bold">Manage students</Link></section> : <><section className="grid grid-cols-1 xl:grid-cols-12 gap-6"><div className="xl:col-span-7 rounded-3xl bg-surface-container-lowest border border-outline-variant/20 p-7"><div className="flex justify-between gap-4 mb-7"><div><h2 className="font-headline-sm text-on-surface">Applications by destination</h2><p className="text-sm text-on-surface-variant mt-1">Volume and acceptance rate by country.</p></div><span className="px-3 py-1.5 h-fit rounded-full bg-surface-container-low text-primary text-xs font-bold">Top markets</span></div><div className="space-y-5">{data?.conversionByCountry.map((country) => <div key={country.country}><div className="flex justify-between gap-3 text-sm mb-2"><span className="font-bold text-on-surface">{country.country}</span><span className="text-on-surface-variant">{country.accepted}/{country.total} accepted · <b className="text-primary">{country.conversionRate}%</b></span></div><div className="h-2.5 rounded-full bg-surface-container-low overflow-hidden"><div className="h-full rounded-full bg-primary" style={{width: `${country.total / maxCountry * 100}%`}} /></div></div>)}</div></div><div className="xl:col-span-5 rounded-3xl bg-surface-container-lowest border border-outline-variant/20 p-7"><h2 className="font-headline-sm text-on-surface">Pipeline health</h2><p className="text-sm text-on-surface-variant mt-1 mb-6">Current application stage breakdown.</p><div className="space-y-4">{Object.entries(STATUS).filter(([key]) => (data?.statusCounts[key] ?? 0) > 0).map(([key, meta]) => <div key={key} className="flex items-center justify-between"><div className="flex items-center gap-3"><span className={`w-2.5 h-2.5 rounded-full ${meta.color}`} /><span className="text-sm text-on-surface">{meta.label}</span></div><span className="font-bold text-on-surface">{data?.statusCounts[key]}</span></div>)}</div><div className="mt-7 pt-5 border-t border-outline-variant/20 flex justify-between"><span className="text-sm text-on-surface-variant">Documents need review</span><span className="font-bold text-amber-600 dark:text-amber-400">{data?.documentsRequested}</span></div></div></section><section className="grid grid-cols-1 xl:grid-cols-12 gap-6"><div className="xl:col-span-8 rounded-3xl bg-surface-container-lowest border border-outline-variant/20 p-7"><h2 className="font-headline-sm text-on-surface">Monthly application volume</h2><p className="text-sm text-on-surface-variant mt-1 mb-7">Applications created over time.</p><div className="h-48 flex items-end gap-3 border-b border-outline-variant/30 pb-1">{data?.monthlyVolume.map((month) => <div key={month.month} className="group flex-1 min-w-10 h-full flex flex-col justify-end items-center gap-2"><span className="text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">{month.count}</span><div className="w-full max-w-12 bg-primary rounded-t-xl min-h-2 hover:bg-secondary transition-colors" style={{height: `${Math.max(8, month.count / maxMonth * 100)}%`}} /><span className="text-[10px] text-on-surface-variant whitespace-nowrap">{month.month.slice(5)}</span></div>)}</div></div><div className="xl:col-span-4 rounded-3xl bg-surface-container-lowest border border-outline-variant/20 p-7"><div className="flex justify-between items-center mb-5"><h2 className="font-headline-sm text-on-surface">Recent activity</h2><Link href="/agency/applications" className="text-sm text-primary font-bold">View all</Link></div><div className="space-y-4">{data?.recentApplications.map((application, index) => <div key={`${application.programName}-${index}`} className="flex gap-3"><div className="w-9 h-9 shrink-0 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center"><span className="material-symbols-outlined text-lg">school</span></div><div className="min-w-0"><p className="font-bold text-sm text-on-surface truncate">{application.programName}</p><p className="text-xs text-on-surface-variant truncate">{application.universityName}</p><p className="text-xs text-primary mt-1">{STATUS[application.status]?.label ?? application.status}</p></div></div>)}</div></div></section></>}</>}</div></main></>;
 }

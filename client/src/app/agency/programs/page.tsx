@@ -13,6 +13,7 @@ interface AgencyService {
   features: string[];
   isActive: boolean;
 }
+interface ServiceInterest { id: string; studentId: string; studentName: string; studentEmail: string; serviceName: string; createdAt: string; }
 
 const EMPTY_FORM = { name: "", description: "", priceUsd: "", features: "" };
 
@@ -24,6 +25,10 @@ export default function AgencyServicesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [interests, setInterests] = useState<ServiceInterest[]>([]);
+  const [contacting, setContacting] = useState<ServiceInterest | null>(null);
+  const [message, setMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   function load() {
     setLoading(true);
@@ -34,6 +39,16 @@ export default function AgencyServicesPage() {
   }
 
   useEffect(load, []);
+  useEffect(() => { api.get<{ data: ServiceInterest[] }>("/api/agency/service-interests").then((res) => setInterests(res.data)).catch(() => {}); }, []);
+
+  async function sendMessage() {
+    if (!contacting || !message.trim()) return;
+    setSendingMessage(true);
+    try {
+      await api.post("/api/conversations", { recipientId: contacting.studentId, subject: `Program enquiry: ${contacting.serviceName}`, message });
+      setContacting(null); setMessage("");
+    } finally { setSendingMessage(false); }
+  }
 
   async function handleCreate() {
     setError(null);
@@ -158,8 +173,10 @@ export default function AgencyServicesPage() {
 </div>
 ))}
 </div>
+{interests.length > 0 && <section className="mt-10 bg-secondary-fixed/40 rounded-[24px] p-6 border border-primary/10"><div className="flex items-center gap-3"><span className="material-symbols-outlined text-primary">notifications_active</span><div><h3 className="font-headline-sm text-on-surface">New program requests</h3><p className="text-sm text-on-surface-variant">Students who want to join one of your packages.</p></div></div><div className="mt-5 space-y-3">{interests.slice(0, 5).map((interest) => <div key={interest.id} className="flex flex-wrap justify-between gap-3 p-4 rounded-xl bg-surface-container-lowest"><div><p className="font-bold text-on-surface">{interest.studentName} <span className="font-normal text-on-surface-variant">wants to join {interest.serviceName}</span></p><p className="text-sm text-on-surface-variant">{interest.studentEmail}</p></div><button onClick={() => { setContacting(interest); setMessage(`Hi ${interest.studentName}, thanks for your interest in ${interest.serviceName}. How can we help you get started?`); }} className="text-primary font-bold text-sm self-center">Contact student</button></div>)}</div></section>}
 </div>
 </main>
+{contacting && <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4"><div className="w-full max-w-lg bg-surface-container-lowest rounded-3xl p-6 shadow-2xl"><div className="flex justify-between gap-4"><div><h3 className="font-headline-sm text-on-surface">Message {contacting.studentName}</h3><p className="text-sm text-on-surface-variant mt-1">Regarding {contacting.serviceName}</p></div><button onClick={() => setContacting(null)} className="text-on-surface-variant hover:text-error"><span className="material-symbols-outlined">close</span></button></div><textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={5} className="w-full mt-5 bg-surface-container-low text-on-surface rounded-xl border-0 p-4 focus:ring-2 focus:ring-primary/30 resize-none" placeholder="Write your message..." /><div className="flex justify-end gap-3 mt-5"><button onClick={() => setContacting(null)} className="px-4 py-2.5 text-on-surface-variant font-bold">Cancel</button><button onClick={sendMessage} disabled={sendingMessage || !message.trim()} className="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold disabled:opacity-50">{sendingMessage ? "Sending..." : "Send message"}</button></div></div></div>}
     </>
   );
 }

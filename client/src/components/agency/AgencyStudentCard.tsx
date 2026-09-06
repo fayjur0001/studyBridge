@@ -67,7 +67,7 @@ export default function AgencyStudentCard({ student }: { student: AgencyStudent 
       <div className="mt-auto pt-4 border-t border-outline-variant/20 flex gap-3">
         <Link
           href={`/agency/students/${student.userId}`}
-          className="flex-1 text-center bg-primary text-white py-2 rounded-xl font-label-md text-label-md transition-opacity hover:opacity-90"
+          className="flex-1 text-center bg-primary text-on-primary py-2 rounded-xl font-label-md text-label-md font-bold transition-opacity hover:opacity-90"
         >
           View Profile
         </Link>

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { and, asc, eq, gte, ilike, SQL } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, or, SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { scholarships } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
@@ -18,7 +18,11 @@ export async function listScholarships(req: Request, res: Response) {
   const q = listQuerySchema.parse(req.query);
 
   const conditions: SQL[] = [];
-  if (q.search) conditions.push(ilike(scholarships.title, `%${q.search}%`));
+  if (q.search) conditions.push(or(
+    ilike(scholarships.title, `%${q.search}%`),
+    ilike(scholarships.provider, `%${q.search}%`),
+    ilike(scholarships.description, `%${q.search}%`),
+  )!);
   if (q.category) conditions.push(eq(scholarships.category, q.category));
   if (q.universityId) conditions.push(eq(scholarships.universityId, q.universityId));
   if (q.upcomingOnly) conditions.push(gte(scholarships.deadline, new Date()));

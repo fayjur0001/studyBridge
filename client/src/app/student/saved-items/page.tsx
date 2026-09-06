@@ -17,6 +17,7 @@ interface SavedItem {
 export default function SavedItemsPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"universities" | "scholarships">("universities");
+  const [searchQuery, setSearchQuery] = useState("");
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [universities, setUniversities] = useState<Record<string, University>>({});
   const [scholarships, setScholarships] = useState<Record<string, Scholarship>>({});
@@ -49,6 +50,13 @@ export default function SavedItemsPage() {
 
   const savedUniversities = savedItems.filter((i) => i.itemType === "university").map((i) => universities[i.itemId]).filter(Boolean);
   const savedScholarships = savedItems.filter((i) => i.itemType === "scholarship").map((i) => scholarships[i.itemId]).filter(Boolean);
+  const searchTerm = searchQuery.trim().toLowerCase();
+  const visibleUniversities = savedUniversities.filter((university) =>
+    `${university.name} ${university.city ?? ""} ${university.country}`.toLowerCase().includes(searchTerm),
+  );
+  const visibleScholarships = savedScholarships.filter((scholarship) =>
+    `${scholarship.title} ${scholarship.provider ?? ""} ${scholarship.category ?? ""}`.toLowerCase().includes(searchTerm),
+  );
 
   return (
     <>
@@ -60,7 +68,7 @@ export default function SavedItemsPage() {
 <div className="flex items-center gap-6">
 <div className="relative hidden sm:block">
 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-<input className="bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 w-64 focus:ring-2 focus:ring-primary/20 text-body-md transition-all" placeholder="Search programs, universities..." type="text" />
+<input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 w-64 focus:ring-2 focus:ring-primary/20 text-body-md transition-all" placeholder="Search saved items..." type="search" aria-label="Search saved items" />
 </div>
 </div>
 <div className="flex items-center gap-4">
@@ -107,10 +115,10 @@ export default function SavedItemsPage() {
 <div className="px-10 pb-20">
 
 <div className={activeTab === "universities" ? "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-card-gap" : "hidden"}>
-{!loading && savedUniversities.length === 0 && (
-  <p className="text-on-surface-variant font-body-md col-span-full">No universities saved yet — browse the <Link href="/universities" className="text-primary font-bold hover:underline">university directory</Link> and save your favorites.</p>
+{!loading && visibleUniversities.length === 0 && (
+  <p className="text-on-surface-variant font-body-md col-span-full">{searchTerm ? "No saved universities match your search." : <>No universities saved yet — browse the <Link href="/universities" className="text-primary font-bold hover:underline">university directory</Link> and save your favorites.</>}</p>
 )}
-{savedUniversities.map((u) => (
+{visibleUniversities.map((u) => (
 <div key={u.id} className="bg-surface-container-lowest rounded-[24px] ambient-card overflow-hidden group">
 <div className="h-32 bg-primary relative">
 <div className="w-full h-full bg-cover bg-center mix-blend-overlay opacity-60" style={{backgroundImage: `url('${universityImage(u.name, u.coverImageUrl, u.logoUrl)}')`}}></div>
@@ -136,10 +144,10 @@ export default function SavedItemsPage() {
 </div>
 
 <div className={activeTab === "scholarships" ? "grid grid-cols-1 lg:grid-cols-2 gap-card-gap" : "hidden"}>
-{!loading && savedScholarships.length === 0 && (
-  <p className="text-on-surface-variant font-body-md col-span-full">No scholarships saved yet — browse <Link href="/scholarships" className="text-primary font-bold hover:underline">scholarships</Link> to save some.</p>
+{!loading && visibleScholarships.length === 0 && (
+  <p className="text-on-surface-variant font-body-md col-span-full">{searchTerm ? "No saved scholarships match your search." : <>No scholarships saved yet — browse <Link href="/scholarships" className="text-primary font-bold hover:underline">scholarships</Link> to save some.</>}</p>
 )}
-{savedScholarships.map((s) => (
+{visibleScholarships.map((s) => (
 <div key={s.id} className="bg-surface-container-lowest rounded-[24px] ambient-card p-8 border-l-8 border-secondary flex flex-col md:flex-row gap-8 relative">
 <button onClick={() => handleRemove("scholarship", s.id)} className="absolute top-4 right-4 text-outline hover:text-error transition-colors">
 <span className="material-symbols-outlined">delete_outline</span>

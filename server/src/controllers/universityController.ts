@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, lte, SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, lte, or, SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { universities, programs } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
@@ -19,7 +19,12 @@ export async function listUniversities(req: Request, res: Response) {
   const q = listQuerySchema.parse(req.query);
 
   const conditions: SQL[] = [];
-  if (q.search) conditions.push(ilike(universities.name, `%${q.search}%`));
+  if (q.search) conditions.push(or(
+    ilike(universities.name, `%${q.search}%`),
+    ilike(universities.country, `%${q.search}%`),
+    ilike(universities.city, `%${q.search}%`),
+    ilike(universities.region, `%${q.search}%`),
+  )!);
   if (q.country) conditions.push(eq(universities.country, q.country));
   if (q.region) conditions.push(eq(universities.region, q.region));
   if (q.maxRanking) conditions.push(lte(universities.ranking, q.maxRanking));

@@ -25,6 +25,7 @@ export default function AdminUsersPage() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,6 +34,7 @@ export default function AdminUsersPage() {
   function load() {
     setLoading(true);
     const params = new URLSearchParams({ limit: "50" });
+    if (search.trim()) params.set("search", search.trim());
     if (roleFilter) params.set("role", roleFilter);
     if (statusFilter) params.set("isActive", statusFilter);
 
@@ -45,7 +47,10 @@ export default function AdminUsersPage() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [roleFilter, statusFilter]);
+  useEffect(() => {
+    const timeout = window.setTimeout(load, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search, roleFilter, statusFilter]);
 
   async function toggleActive(u: AdminUser) {
     setUpdatingId(u.id);
@@ -67,7 +72,7 @@ export default function AdminUsersPage() {
 <div className="flex items-center gap-6 flex-1">
 <div className="relative w-full max-w-md">
 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-body-lg" data-icon="search">search</span>
-<input className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-body-md focus:ring-2 focus:ring-primary-container transition-all" placeholder="Search by name, email, or ID..." type="text"/>
+<input value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-body-md focus:ring-2 focus:ring-primary-container transition-all" placeholder="Search by name or email..." type="search" aria-label="Search users"/>
 </div>
 </div>
 <div className="flex items-center gap-4">
@@ -118,7 +123,7 @@ export default function AdminUsersPage() {
 </div>
 <div className="flex items-end h-full mt-7">
 <button
-  onClick={() => { setRoleFilter(""); setStatusFilter(""); }}
+  onClick={() => { setSearch(""); setRoleFilter(""); setStatusFilter(""); }}
   className="px-5 py-2.5 text-primary hover:bg-primary-container/10 rounded-xl transition-colors font-label-md"
 >
                         Clear All Filters

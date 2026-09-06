@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { and, eq, ilike, SQL } from "drizzle-orm";
+import { and, eq, ilike, or, SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { programs, universities } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
@@ -20,7 +20,11 @@ export async function listPrograms(req: Request, res: Response) {
   if (q.universityId) conditions.push(eq(programs.universityId, q.universityId));
   if (q.field) conditions.push(ilike(programs.field, `%${q.field}%`));
   if (q.degreeLevel) conditions.push(eq(programs.degreeLevel, q.degreeLevel));
-  if (q.search) conditions.push(ilike(programs.name, `%${q.search}%`));
+  if (q.search) conditions.push(or(
+    ilike(programs.name, `%${q.search}%`),
+    ilike(programs.field, `%${q.search}%`),
+    ilike(programs.description, `%${q.search}%`),
+  )!);
 
   const where = conditions.length ? and(...conditions) : undefined;
   const offset = (q.page - 1) * q.limit;

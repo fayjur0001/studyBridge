@@ -25,12 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Apply a student's saved appearance preference on every page, not only
-  // after visiting the Settings screen.
+  // Apply each dashboard user's saved appearance preference on every page,
+  // not only after visiting the Settings screen.
   useEffect(() => {
-    if (user?.role !== "student") return;
+    const settingsPath = user?.role === "student" ? "/api/student/settings" : user?.role === "agency" ? "/api/agency/settings" : null;
+    if (!settingsPath) return;
     api
-      .get<{ displayMode: "light" | "dark"; language: string }>("/api/student/settings")
+      .get<{ displayMode: "light" | "dark"; language: string }>(settingsPath)
       .then(({ displayMode, language }) => {
         document.documentElement.classList.toggle("dark", displayMode === "dark");
         document.documentElement.lang = language.split("-")[0] || "en";

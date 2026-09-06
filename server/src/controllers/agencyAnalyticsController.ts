@@ -7,8 +7,12 @@ export async function getAgencyAnalytics(req: Request, res: Response) {
   const rows = await db
     .select({
       status: applications.status,
+      studentId: applications.studentId,
       country: universities.country,
+      programName: programs.name,
+      universityName: universities.name,
       month: sql<string>`to_char(${applications.createdAt}, 'YYYY-MM')`,
+      createdAt: applications.createdAt,
     })
     .from(applications)
     .innerJoin(agencyStudents, eq(applications.studentId, agencyStudents.studentId))
@@ -18,6 +22,7 @@ export async function getAgencyAnalytics(req: Request, res: Response) {
 
   const byCountry: Record<string, { total: number; accepted: number }> = {};
   const byMonth: Record<string, number> = {};
+  const statusCounts: Record<string, number> = {};
 
   for (const row of rows) {
     byCountry[row.country] ??= { total: 0, accepted: 0 };
@@ -25,6 +30,7 @@ export async function getAgencyAnalytics(req: Request, res: Response) {
     if (row.status === "accepted") byCountry[row.country].accepted += 1;
 
     byMonth[row.month] = (byMonth[row.month] ?? 0) + 1;
+    statusCounts[row.status] = (statusCounts[row.status] ?? 0) + 1;
   }
 
   const conversionByCountry = Object.entries(byCountry)
@@ -42,7 +48,15 @@ export async function getAgencyAnalytics(req: Request, res: Response) {
 
   res.json({
     totalApplications: rows.length,
+    activeApplications: rows.filter((row) => ["draft", "submitted", "under_review", "documents_requested"].includes(row.status)).length,
+    acceptedApplications: statusCounts.accepted ?? 0,
+    rejectedApplications: statusCounts.rejected ?? 0,
+    documentsRequested: statusCounts.documents_requested ?? 0,
+    totalStudents: new Set(rows.map((row) => row.studentId)).size,
+    acceptanceRate: rows.length ? Math.round(((statusCounts.accepted ?? 0) / rows.length) * 100) : 0,
+    statusCounts,
     conversionByCountry,
     monthlyVolume,
+    recentApplications: rows.slice().sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 5).map((row) => ({ programName: row.programName, universityName: row.universityName, status: row.status, createdAt: row.createdAt })),
   });
 }

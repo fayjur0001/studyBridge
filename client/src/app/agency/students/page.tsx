@@ -6,6 +6,7 @@ import AgencySidebar from "@/components/dashboard/AgencySidebar";
 import AgencyStudentCard from "@/components/agency/AgencyStudentCard";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError } from "@/lib/api";
+import AgencyNotificationBell from "@/components/agency/AgencyNotificationBell";
 
 interface AgencyStudent {
   userId: string;
@@ -23,6 +24,7 @@ export default function AgencyStudentsPage() {
   const [linkEmail, setLinkEmail] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   function loadStudents() {
     setLoading(true);
@@ -56,13 +58,13 @@ export default function AgencyStudentsPage() {
 
 
 {/* Main Content Wrapper */}
-<main className="ml-[260px] min-h-screen flex flex-col relative">
+<main className="ml-[260px] min-h-screen flex flex-col relative bg-background text-on-background">
 {/* TopNavBar */}
-<header className="sticky top-0 w-full z-40 bg-surface/80 backdrop-blur-md flex justify-between items-center px-gutter py-4 h-20">
+<header className="sticky top-0 w-full z-40 bg-surface/80 backdrop-blur-md flex justify-between items-center px-gutter py-4 h-20 border-b border-outline-variant/20">
 <div className="flex items-center gap-8 flex-1">
 <div className="relative w-full max-w-md">
 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
-<input className="w-full bg-surface-container-low border-none rounded-full py-2.5 pl-12 pr-4 focus:ring-2 focus:ring-primary/20 font-body-md text-body-md placeholder:text-outline-variant" placeholder="Search student by name or ID..." type="text"/>
+<input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="w-full bg-surface-container-low border-none rounded-full py-2.5 pl-12 pr-4 focus:ring-2 focus:ring-primary/20 font-body-md text-body-md placeholder:text-outline-variant" placeholder="Search by student name or email..." type="search"/>
 </div>
 <div className="hidden md:flex gap-6">
 <Link className="text-on-surface-variant hover:text-primary transition-colors font-body-lg text-body-lg" href="/universities">Directory</Link>
@@ -71,9 +73,7 @@ export default function AgencyStudentsPage() {
 </div>
 </div>
 <div className="flex items-center gap-4">
-<button className="p-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant relative transition-colors">
-<span className="material-symbols-outlined" data-icon="notifications">notifications</span>
-</button>
+<AgencyNotificationBell />
 <div className="flex items-center gap-3 pl-4 border-l border-outline-variant/30">
 <div className="text-right">
 <p className="font-label-md text-label-md text-on-surface">{user?.fullName ?? "..."}</p>
@@ -119,10 +119,11 @@ export default function AgencyStudentsPage() {
   <p className="text-on-surface-variant font-body-md">No students linked yet — use the form above to link one by email.</p>
 )}
 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-card-gap">
-{students.map((student) => (
+{students.filter((student) => `${student.fullName} ${student.email}`.toLowerCase().includes(searchQuery.toLowerCase())).map((student) => (
   <AgencyStudentCard key={student.userId} student={student} />
 ))}
 </div>
+{!loading && students.length > 0 && students.every((student) => !`${student.fullName} ${student.email}`.toLowerCase().includes(searchQuery.toLowerCase())) && <p className="text-on-surface-variant font-body-md mt-6">No linked students match your search.</p>}
 </section>
 </main>
 

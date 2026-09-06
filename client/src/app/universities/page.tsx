@@ -10,8 +10,10 @@ import { Paginated, University } from "@/lib/types";
 const REGIONS = ["North America", "Europe", "Asia-Pacific", "Middle East"];
 
 export default function UniversitiesListingPage() {
+  const [search, setSearch] = useState("");
   const [region, setRegion] = useState("");
   const [maxRanking, setMaxRanking] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [appliedRegion, setAppliedRegion] = useState("");
   const [appliedMaxRanking, setAppliedMaxRanking] = useState("");
   const [page, setPage] = useState(1);
@@ -24,6 +26,7 @@ export default function UniversitiesListingPage() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ page: String(page), limit: "6" });
+    if (appliedSearch) params.set("search", appliedSearch);
     if (appliedRegion) params.set("region", appliedRegion);
     if (appliedMaxRanking) params.set("maxRanking", appliedMaxRanking);
 
@@ -35,10 +38,11 @@ export default function UniversitiesListingPage() {
       })
       .catch(() => setError("Couldn't load universities right now. Please try again."))
       .finally(() => setLoading(false));
-  }, [page, appliedRegion, appliedMaxRanking]);
+  }, [page, appliedSearch, appliedRegion, appliedMaxRanking]);
 
   function applyFilters() {
     setPage(1);
+    setAppliedSearch(search.trim());
     setAppliedRegion(region);
     setAppliedMaxRanking(maxRanking);
   }
@@ -70,7 +74,19 @@ export default function UniversitiesListingPage() {
           </div>
 
           <div className="bg-surface-container-lowest rounded-3xl premium-shadow p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center">
-            <div className="w-full md:flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="w-full md:flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="font-label-md text-on-surface-variant ml-1">Search</label>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                  className="w-full bg-surface-container-low border-none rounded-xl py-3 px-4 text-body-md focus:ring-2 focus:ring-primary"
+                  placeholder="University, city, or country"
+                  type="search"
+                  aria-label="Search universities"
+                />
+              </div>
               <div className="space-y-2">
                 <label className="font-label-md text-on-surface-variant ml-1">Region</label>
                 <div className="relative">

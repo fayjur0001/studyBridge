@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { and, desc, eq, ilike, SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
@@ -19,7 +19,10 @@ export async function listUsers(req: Request, res: Response) {
   const q = listQuerySchema.parse(req.query);
 
   const conditions: SQL[] = [];
-  if (q.search) conditions.push(ilike(users.fullName, `%${q.search}%`));
+  if (q.search) conditions.push(or(
+    ilike(users.fullName, `%${q.search}%`),
+    ilike(users.email, `%${q.search}%`),
+  )!);
   if (q.role) conditions.push(eq(users.role, q.role));
   if (q.isActive !== undefined) conditions.push(eq(users.isActive, q.isActive));
 

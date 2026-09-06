@@ -8,6 +8,7 @@ import {
   updateMyNotificationPreferences,
 } from "@/controllers/notificationPreferencesController";
 import { deactivateMyAccount, getMySessions, getMySettings, revokeMySession, updateMySettings } from "@/controllers/studentSettingsController";
+import { requestAgencyService } from "@/controllers/agencyServiceInterestController";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.patch("/settings", asyncHandler(updateMySettings));
 router.get("/sessions", asyncHandler(getMySessions));
 router.delete("/sessions/:id", asyncHandler(revokeMySession));
 router.post("/deactivate", asyncHandler(deactivateMyAccount));
+router.post("/agency-services/:serviceId/join", asyncHandler(requestAgencyService));
 
 export default router;

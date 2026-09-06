@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users, agencyFiles, agencyProfiles } from "@/db/schema";
+import { users, agencyFiles, agencyProfiles, agencyServices } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
 import { optionalUrl } from "@/utils/zodHelpers";
 
@@ -30,6 +30,7 @@ const agencyUpdateSchema = z.object({
   website: optionalUrl(),
   address: z.string().optional(),
   description: z.string().optional(),
+  studentStories: z.string().max(10000).optional(),
 });
 
 export async function updateMyAgencyProfile(req: Request, res: Response) {
@@ -75,5 +76,7 @@ export async function getAgencyPublicProfile(req: Request, res: Response) {
   if (!profile) throw new AppError("Agency not found.", 404);
   const certificates = await db.select({ id: agencyFiles.id, title: agencyFiles.title, fileName: agencyFiles.fileName, expiresAt: agencyFiles.expiresAt, createdAt: agencyFiles.createdAt })
     .from(agencyFiles).where(and(eq(agencyFiles.agencyId, profile.userId), eq(agencyFiles.category, "certification"))).orderBy(desc(agencyFiles.createdAt));
-  res.json({ ...profile, certificates });
+  const services = await db.select({ id: agencyServices.id, name: agencyServices.name, description: agencyServices.description, priceUsd: agencyServices.priceUsd, features: agencyServices.features })
+    .from(agencyServices).where(and(eq(agencyServices.agencyId, profile.userId), eq(agencyServices.isActive, true)));
+  res.json({ ...profile, certificates, services });
 }

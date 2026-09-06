@@ -21,7 +21,9 @@ function daysLeftLabel(deadline: string | null) {
 }
 
 export default function ScholarshipsListingPage() {
+  const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [appliedCategory, setAppliedCategory] = useState("");
   const [page, setPage] = useState(1);
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
@@ -31,6 +33,7 @@ export default function ScholarshipsListingPage() {
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: "6" });
+    if (appliedSearch) params.set("search", appliedSearch);
     if (appliedCategory) params.set("category", appliedCategory);
 
     api
@@ -40,10 +43,11 @@ export default function ScholarshipsListingPage() {
         setTotal(res.meta.total);
       })
       .finally(() => setLoading(false));
-  }, [page, appliedCategory]);
+  }, [page, appliedSearch, appliedCategory]);
 
   function applyFilters() {
     setPage(1);
+    setAppliedSearch(search.trim());
     setAppliedCategory(category);
   }
 
@@ -75,7 +79,19 @@ export default function ScholarshipsListingPage() {
           </div>
 
           <div className="bg-surface-container-lowest rounded-3xl premium-shadow p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center">
-            <div className="w-full md:flex-1">
+            <div className="w-full md:flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="font-label-md text-on-surface-variant ml-1">Search</label>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                  className="w-full bg-surface-container-low border-none rounded-xl py-3 px-4 text-body-md focus:ring-2 focus:ring-primary"
+                  placeholder="Scholarship or provider"
+                  type="search"
+                  aria-label="Search scholarships"
+                />
+              </div>
               <div className="space-y-2 max-w-xs">
                 <label className="font-label-md text-on-surface-variant ml-1">Award Type</label>
                 <div className="relative">

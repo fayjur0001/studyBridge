@@ -82,6 +82,7 @@ export const agencyProfiles = pgTable("agency_profiles", {
   website: varchar("website", { length: 255 }),
   address: text("address"),
   description: text("description"),
+  studentStories: text("student_stories"),
   isVerified: boolean("is_verified").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -355,6 +356,19 @@ export const agencyServices = pgTable("agency_services", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const agencyServiceInterests = pgTable(
+  "agency_service_interests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    agencyId: uuid("agency_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id").notNull().references(() => agencyServices.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 30 }).notNull().default("requested"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({ pk: primaryKey({ columns: [table.serviceId, table.studentId] }) })
+);
 
 /* -------------------------------------------------------------------------- */
 /* Site content (simple admin-editable CMS blocks, e.g. SEO title/description)*/

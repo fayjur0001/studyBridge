@@ -5,6 +5,7 @@ import Link from "next/link";
 import AgencySidebar from "@/components/dashboard/AgencySidebar";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
+import AgencyNotificationBell from "@/components/agency/AgencyNotificationBell";
 
 interface AgencyStats {
   totalStudents: number;
@@ -29,7 +30,7 @@ export default function AgencyDashboardPage() {
 
 
 {/* Top Navigation */}
-<header className="ml-[260px] h-20 bg-surface/80 backdrop-blur-md sticky top-0 z-40 px-gutter flex items-center justify-between">
+<header className="ml-[260px] h-20 bg-surface/80 dark:bg-[#17181d]/95 backdrop-blur-md sticky top-0 z-40 px-gutter flex items-center justify-between border-b border-outline-variant/20 dark:border-white/10">
 <div className="flex items-center gap-8">
 <div className="relative">
 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
@@ -42,10 +43,7 @@ export default function AgencyDashboardPage() {
 </nav>
 </div>
 <div className="flex items-center gap-4">
-<button className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors relative">
-<span className="material-symbols-outlined" data-icon="notifications">notifications</span>
-<span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
-</button>
+<AgencyNotificationBell />
 <div className="h-8 w-[1px] bg-outline-variant/30"></div>
 <div className="flex items-center gap-3">
 <div className="text-right">
@@ -59,22 +57,22 @@ export default function AgencyDashboardPage() {
 </div>
 </header>
 {/* Main Content Area */}
-<main className="ml-[260px] p-margin-desktop min-h-screen">
+<main className="ml-[260px] p-margin-desktop min-h-screen bg-background dark:bg-[#101115] text-on-background">
 {/* Greeting & Primary Action */}
 <div className="flex justify-between items-end mb-10">
 <div>
 <h2 className="font-headline-lg text-headline-lg text-primary mb-1">Agency Dashboard</h2>
 <p className="font-body-lg text-body-lg text-on-surface-variant">Welcome back, {user?.fullName?.split(" ")[0] ?? ""}. Here&apos;s what&apos;s happening with your students today.</p>
 </div>
-<button className="bg-primary text-white px-6 py-3 rounded-xl font-label-md text-label-md font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg active:scale-95">
+<Link href="/agency/applications" className="bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md text-label-md font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg active:scale-95">
 <span className="material-symbols-outlined" data-icon="add_circle">add_circle</span>
-                New Application
-            </button>
+                Review Applications
+            </Link>
 </div>
 {/* High-Level Stats Bento Grid */}
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-card-gap mb-10">
 {/* Stat 1 */}
-<div className="bg-surface-container-lowest p-container-padding rounded-[24px] ambient-card border border-outline-variant/20">
+<div className="bg-surface-container-lowest dark:bg-[#1b1c20] p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 dark:border-white/10">
 <div className="flex items-center justify-between mb-4">
 <div className="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center">
 <span className="material-symbols-outlined text-on-secondary-container" data-icon="group">group</span>
@@ -85,7 +83,7 @@ export default function AgencyDashboardPage() {
 <p className="font-headline-lg text-headline-lg text-on-surface font-bold">{stats?.totalStudents ?? 0}</p>
 </div>
 {/* Stat 2 */}
-<div className="bg-surface-container-lowest p-container-padding rounded-[24px] ambient-card border border-outline-variant/20">
+<div className="bg-surface-container-lowest dark:bg-[#1b1c20] p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 dark:border-white/10">
 <div className="flex items-center justify-between mb-4">
 <div className="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center">
 <span className="material-symbols-outlined text-on-primary-fixed-variant" data-icon="assignment">assignment</span>
@@ -96,7 +94,7 @@ export default function AgencyDashboardPage() {
 <p className="font-headline-lg text-headline-lg text-on-surface font-bold">{stats?.totalApplications ?? 0}</p>
 </div>
 {/* Stat 3 */}
-<div className="bg-surface-container-lowest p-container-padding rounded-[24px] ambient-card border border-outline-variant/20">
+<div className="bg-surface-container-lowest dark:bg-[#1b1c20] p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 dark:border-white/10">
 <div className="flex items-center justify-between mb-4">
 <div className="w-12 h-12 rounded-xl bg-tertiary-fixed flex items-center justify-center">
 <span className="material-symbols-outlined text-on-tertiary-fixed" data-icon="payments">payments</span>
@@ -107,7 +105,7 @@ export default function AgencyDashboardPage() {
 <p className="font-headline-lg text-headline-lg text-on-surface font-bold">$1.2M</p>
 </div>
 {/* Stat 4 */}
-<div className="bg-surface-container-lowest p-container-padding rounded-[24px] ambient-card border border-outline-variant/20">
+<div className="bg-surface-container-lowest dark:bg-[#1b1c20] p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 dark:border-white/10">
 <div className="flex items-center justify-between mb-4">
 <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center">
 <span className="material-symbols-outlined text-primary" data-icon="verified">verified</span>
@@ -120,7 +118,7 @@ export default function AgencyDashboardPage() {
 </div>
 <div className="grid grid-cols-12 gap-card-gap">
 {/* Student Pipeline Chart Container */}
-<div className="col-span-12 lg:col-span-8 bg-surface-container-lowest p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 flex flex-col min-h-[400px]">
+<div className="col-span-12 lg:col-span-8 bg-surface-container-lowest dark:bg-[#1b1c20] p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 dark:border-white/10 flex flex-col min-h-[400px]">
 <div className="flex justify-between items-start mb-8">
 <div>
 <h3 className="font-headline-sm text-headline-sm text-on-surface mb-1">Student Pipeline</h3>
@@ -191,7 +189,7 @@ export default function AgencyDashboardPage() {
 <h3 className="font-headline-sm text-headline-sm text-surface-container-lowest mb-2">Need Help?</h3>
 <p className="font-body-md text-body-md text-primary-fixed-dim opacity-90">Schedule a 1-on-1 strategy session with your account manager.</p>
 </div>
-<button className="bg-surface-container-lowest text-primary px-4 py-2 rounded-lg font-label-md text-label-md font-bold w-fit hover:bg-primary-fixed transition-colors">Book a Call</button>
+<Link href="/contact" className="bg-surface-container-lowest text-primary px-4 py-2 rounded-lg font-label-md text-label-md font-bold w-fit hover:bg-primary-fixed transition-colors">Contact Support</Link>
 </div>
 {/* Abstract geometric decor */}
 <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
@@ -199,7 +197,7 @@ export default function AgencyDashboardPage() {
 <span className="material-symbols-outlined text-[120px]" data-icon="support_agent">support_agent</span>
 </div>
 </div>
-<div className="bg-surface-container-lowest p-container-padding rounded-[24px] ambient-card border border-outline-variant/20">
+<div className="bg-surface-container-lowest dark:bg-[#1b1c20] p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 dark:border-white/10">
 <div className="flex items-center justify-between mb-6">
 <h3 className="font-headline-sm text-headline-sm text-on-surface">Urgent Tasks</h3>
 <span className="w-6 h-6 bg-error text-white text-[10px] flex items-center justify-center rounded-full font-bold">4</span>
@@ -225,18 +223,18 @@ export default function AgencyDashboardPage() {
 <p className="font-label-md text-label-md text-on-surface-variant mt-1">Due Tomorrow</p>
 </div>
 </div>
-<button className="w-full py-3 text-center font-label-md text-label-md text-primary font-bold hover:bg-primary-fixed/30 rounded-xl transition-all">View All Tasks</button>
+<Link href="/agency/applications" className="block w-full py-3 text-center font-label-md text-label-md text-primary font-bold hover:bg-primary-fixed/30 rounded-xl transition-all">Review Applications</Link>
 </div>
 </div>
 </div>
 {/* Recent Student Activity */}
-<div className="col-span-12 bg-surface-container-lowest p-container-padding rounded-[24px] ambient-card border border-outline-variant/20">
+<div className="col-span-12 bg-surface-container-lowest dark:bg-[#1b1c20] p-container-padding rounded-[24px] ambient-card border border-outline-variant/20 dark:border-white/10">
 <div className="flex justify-between items-center mb-8">
 <div>
 <h3 className="font-headline-sm text-headline-sm text-on-surface">Recent Student Activity</h3>
 <p className="font-body-md text-body-md text-on-surface-variant">Track real-time progress of your applicants</p>
 </div>
-<button className="text-primary font-label-md text-label-md font-bold hover:underline">See Detailed Log</button>
+<Link href="/agency/students" className="text-primary font-label-md text-label-md font-bold hover:underline">View Students</Link>
 </div>
 <div className="overflow-x-auto">
 <table className="w-full text-left">
@@ -265,7 +263,7 @@ export default function AgencyDashboardPage() {
 <p className="font-body-md text-body-md text-on-surface-variant">University of Oxford</p>
 </td>
 <td className="py-5">
-<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-secondary-fixed text-on-secondary-container">Under Review</span>
+<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-secondary-fixed text-on-secondary-fixed">Under Review</span>
 </td>
 <td className="py-5 font-body-md text-body-md text-on-surface-variant">2 hours ago</td>
 <td className="py-5 text-right">
@@ -329,7 +327,7 @@ export default function AgencyDashboardPage() {
 </div>
 </main>
 {/* Footer Shell */}
-<footer className="ml-[260px] bg-surface-container-lowest border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center px-margin-desktop py-gutter">
+<footer className="ml-[260px] bg-surface-container-lowest dark:bg-[#17181d] border-t border-outline-variant/30 dark:border-white/10 flex flex-col md:flex-row justify-between items-center px-margin-desktop py-gutter">
 <div className="mb-4 md:mb-0">
 <h2 className="font-headline-sm text-headline-sm font-bold text-primary">StudyBridge</h2>
 <p className="font-body-md text-body-md text-on-surface-variant">© 2024 StudyBridge Global Education. All rights reserved.</p>

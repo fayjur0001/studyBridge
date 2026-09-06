@@ -46,7 +46,7 @@ export default function Input({
             icon ? "pl-12" : "pl-4"
           } ${
             isPassword || rightAction ? "pr-12" : "pr-4"
-          } text-body-md font-body-md outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all ${className}`}
+          } text-body-md font-body-md text-on-surface placeholder:text-outline outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 transition-all ${className}`}
           {...rest}
         />
         {isPassword && (

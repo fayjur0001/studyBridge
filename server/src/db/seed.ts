@@ -44,7 +44,7 @@ async function main() {
       region: "Europe",
       city: "Oxford",
       ranking: 1,
-      coverImageUrl: "https://www.ox.ac.uk/sites/files/oxford/news_oxford_skyline_cairns.jpg",
+      coverImageUrl: "https://images.unsplash.com/photo-1564981797816-1043664bf78d?auto=format&fit=crop&w=1400&q=85",
       description: "One of the world's oldest and most prestigious research universities.",
       websiteUrl: "https://www.ox.ac.uk",
       isFeatured: true,
