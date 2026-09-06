@@ -86,6 +86,33 @@ export const agencyProfiles = pgTable("agency_profiles", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Files an agency supplies to substantiate its business and credentials.
+// Certificates are shown on the student-facing agency profile; business
+// documents remain private to the agency and platform reviewers.
+export const agencyFiles = pgTable("agency_files", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  agencyId: uuid("agency_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  category: varchar("category", { length: 30 }).notNull(), // business_document | certification
+  title: varchar("title", { length: 255 }).notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  filePath: text("file_path").notNull(),
+  mimeType: varchar("mime_type", { length: 120 }),
+  sizeBytes: integer("size_bytes"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const agencyTeamMembers = pgTable("agency_team_members", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  agencyId: uuid("agency_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fullName: varchar("full_name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  role: varchar("role", { length: 40 }).notNull().default("Counselor"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // A student can be linked to more than one agency at the same time, and an
 // agency can track many students — so this is a many-to-many join table
 // rather than a single agencyId column on student_profiles.
@@ -370,8 +397,13 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   applications: many(applications),
   documents: many(documents),
+  agencyFiles: many(agencyFiles),
   agencyLinksAsStudent: many(agencyStudents, { relationName: "studentLinks" }),
   agencyLinksAsAgency: many(agencyStudents, { relationName: "agencyLinks" }),
+}));
+
+export const agencyFilesRelations = relations(agencyFiles, ({ one }) => ({
+  agency: one(users, { fields: [agencyFiles.agencyId], references: [users.id] }),
 }));
 
 export const agencyStudentsRelations = relations(agencyStudents, ({ one }) => ({

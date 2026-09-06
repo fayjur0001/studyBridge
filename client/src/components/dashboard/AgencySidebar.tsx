@@ -22,10 +22,10 @@ export default function AgencySidebar() {
     pathname === href || pathname?.startsWith(href + "/");
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[260px] bg-primary flex flex-col py-8 shadow-xl z-50 overflow-y-auto custom-scrollbar">
+    <aside className="fixed left-0 top-0 h-screen w-[260px] bg-primary dark:bg-[#10172f] flex flex-col py-8 shadow-xl z-50 overflow-y-auto custom-scrollbar">
       <div className="px-8 mb-12">
         <Link href="/agency/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-surface-container-lowest rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-surface-container-lowest dark:bg-[#dce4ff] rounded-xl flex items-center justify-center">
             <span
               className="material-symbols-outlined text-primary"
               style={{ fontVariationSettings: "'FILL' 1" }}
@@ -34,10 +34,10 @@ export default function AgencySidebar() {
             </span>
           </div>
           <div>
-            <h1 className="font-headline-md text-headline-md font-bold text-surface-container-lowest leading-none">
+            <h1 className="font-headline-md text-headline-md font-bold text-surface-container-lowest dark:text-white leading-none">
               StudyBridge
             </h1>
-            <p className="font-label-md text-label-md text-primary-fixed-dim opacity-70">
+            <p className="font-label-md text-label-md text-primary-fixed-dim dark:text-[#b9c7ff] opacity-80">
               Academic Portal
             </p>
           </div>
@@ -53,8 +53,8 @@ export default function AgencySidebar() {
               href={item.href}
               className={
                 active
-                  ? "flex items-center gap-4 bg-background text-primary rounded-l-full ml-4 pl-6 py-3 font-semibold transition-all duration-300"
-                  : "flex items-center gap-4 text-primary-fixed-dim hover:text-surface-container-lowest px-8 py-3 transition-colors hover:bg-primary-container/20"
+                  ? "flex items-center gap-4 bg-background dark:bg-[#242d4c] text-primary dark:text-white rounded-l-full ml-4 pl-6 py-3 font-semibold transition-all duration-300"
+                  : "flex items-center gap-4 text-primary-fixed-dim dark:text-[#bdc9ff] hover:text-surface-container-lowest dark:hover:text-white px-8 py-3 transition-colors hover:bg-primary-container/20 dark:hover:bg-white/10"
               }
             >
               <span
@@ -69,13 +69,13 @@ export default function AgencySidebar() {
         })}
       </nav>
 
-      <div className="mt-auto pt-8 border-t border-primary-container/30">
+      <div className="mt-auto pt-8 border-t border-primary-container/30 dark:border-white/15">
         <Link
           href={PROFILE_HREF}
           className={
             isActive(PROFILE_HREF)
-              ? "flex items-center gap-4 bg-background text-primary rounded-l-full ml-4 pl-6 py-3 font-semibold transition-all duration-300"
-              : "flex items-center gap-4 text-primary-fixed-dim hover:text-surface-container-lowest px-8 py-3 transition-colors hover:bg-primary-container/20"
+              ? "flex items-center gap-4 bg-background dark:bg-[#242d4c] text-primary dark:text-white rounded-l-full ml-4 pl-6 py-3 font-semibold transition-all duration-300"
+              : "flex items-center gap-4 text-primary-fixed-dim dark:text-[#bdc9ff] hover:text-surface-container-lowest dark:hover:text-white px-8 py-3 transition-colors hover:bg-primary-container/20 dark:hover:bg-white/10"
           }
         >
           <span className="material-symbols-outlined">person</span>
@@ -85,8 +85,8 @@ export default function AgencySidebar() {
           href={SETTINGS_HREF}
           className={
             isActive(SETTINGS_HREF)
-              ? "flex items-center gap-4 bg-background text-primary rounded-l-full ml-4 pl-6 py-3 font-semibold transition-all duration-300"
-              : "flex items-center gap-4 text-primary-fixed-dim hover:text-surface-container-lowest px-8 py-3 transition-colors hover:bg-primary-container/20"
+              ? "flex items-center gap-4 bg-background dark:bg-[#242d4c] text-primary dark:text-white rounded-l-full ml-4 pl-6 py-3 font-semibold transition-all duration-300"
+              : "flex items-center gap-4 text-primary-fixed-dim dark:text-[#bdc9ff] hover:text-surface-container-lowest dark:hover:text-white px-8 py-3 transition-colors hover:bg-primary-container/20 dark:hover:bg-white/10"
           }
         >
           <span className="material-symbols-outlined">settings</span>
@@ -94,7 +94,7 @@ export default function AgencySidebar() {
         </Link>
         <Link
           href="/login"
-          className="flex items-center gap-4 text-primary-fixed-dim hover:text-surface-container-lowest px-8 py-3 transition-colors hover:bg-primary-container/20"
+          className="flex items-center gap-4 text-primary-fixed-dim dark:text-[#bdc9ff] hover:text-surface-container-lowest dark:hover:text-white px-8 py-3 transition-colors hover:bg-primary-container/20 dark:hover:bg-white/10"
         >
           <span className="material-symbols-outlined">logout</span>
           <span className="font-label-md text-label-md">Logout</span>

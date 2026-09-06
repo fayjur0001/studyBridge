@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/student/ai-tools", icon: "smart_toy", label: "AI Tools Hub" },
   { href: "/student/saved-items", icon: "bookmark", label: "Saved Items" },
   { href: "/student/documents", icon: "folder_open", label: "Document Vault" },
+  { href: "/student/agencies", icon: "business", label: "Find Agencies" },
 ];
 
 const EXPLORE_ITEM = { href: "/universities", icon: "school", label: "Explore Universities" };
@@ -67,7 +68,7 @@ export default function StudentSidebar() {
               >
                 {item.icon}
               </span>
-              <span className="font-label-md text-label-md">{t(item.href === "/student/dashboard" ? "dashboard" : item.href === "/student/messaging" ? "messaging" : item.href === "/student/ai-recommendations" ? "recommendations" : item.href === "/student/applications" ? "applications" : item.href === "/student/ai-tools" ? "tools" : item.href === "/student/saved-items" ? "saved" : "documents")}</span>
+              <span className="font-label-md text-label-md">{item.href === "/student/agencies" ? item.label : t(item.href === "/student/dashboard" ? "dashboard" : item.href === "/student/messaging" ? "messaging" : item.href === "/student/ai-recommendations" ? "recommendations" : item.href === "/student/applications" ? "applications" : item.href === "/student/ai-tools" ? "tools" : item.href === "/student/saved-items" ? "saved" : "documents")}</span>
             </Link>
           );
         })}

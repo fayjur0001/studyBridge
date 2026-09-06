@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users, agencyProfiles } from "@/db/schema";
+import { users, agencyFiles, agencyProfiles } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
 import { optionalUrl } from "@/utils/zodHelpers";
 
@@ -57,4 +57,23 @@ export async function updateMyAgencyProfile(req: Request, res: Response) {
   const { passwordHash, ...safeUser } = updated!;
   void passwordHash;
   res.json(safeUser);
+}
+
+// The directory deliberately returns only public agency information and
+// certificates, never business-registration files or account details.
+export async function listAgencies(req: Request, res: Response) {
+  const rows = await db.select({
+    userId: agencyProfiles.userId, companyName: agencyProfiles.companyName,
+    website: agencyProfiles.website, address: agencyProfiles.address,
+    description: agencyProfiles.description, isVerified: agencyProfiles.isVerified,
+  }).from(agencyProfiles).orderBy(agencyProfiles.companyName);
+  res.json({ data: rows });
+}
+
+export async function getAgencyPublicProfile(req: Request, res: Response) {
+  const profile = await db.query.agencyProfiles.findFirst({ where: eq(agencyProfiles.userId, req.params.id) });
+  if (!profile) throw new AppError("Agency not found.", 404);
+  const certificates = await db.select({ id: agencyFiles.id, title: agencyFiles.title, fileName: agencyFiles.fileName, expiresAt: agencyFiles.expiresAt, createdAt: agencyFiles.createdAt })
+    .from(agencyFiles).where(and(eq(agencyFiles.agencyId, profile.userId), eq(agencyFiles.category, "certification"))).orderBy(desc(agencyFiles.createdAt));
+  res.json({ ...profile, certificates });
 }

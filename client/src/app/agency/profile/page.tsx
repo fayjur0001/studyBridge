@@ -20,6 +20,10 @@ interface AgencyProfileData {
   } | null;
 }
 
+type ProfileTab = "general" | "team" | "documents" | "certifications";
+interface TeamMember { id: string; fullName: string; email: string; role: string; status: "pending" | "active"; }
+interface AgencyFile { id: string; category: "business_document" | "certification"; title: string; fileName: string; expiresAt: string | null; createdAt: string; }
+
 export default function AgencyProfilePage() {
   const { user } = useAuth();
   const [data, setData] = useState<AgencyProfileData | null>(null);
@@ -29,6 +33,11 @@ export default function AgencyProfilePage() {
   const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>("general");
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [agencyFiles, setAgencyFiles] = useState<AgencyFile[]>([]);
+  const [uploadingCategory, setUploadingCategory] = useState<AgencyFile["category"] | null>(null);
+  const [uploadError, setUploadError] = useState("");
 
   function load() {
     api.get<AgencyProfileData>("/api/agency/me").then((res) => {
@@ -41,6 +50,28 @@ export default function AgencyProfilePage() {
   }
 
   useEffect(load, []);
+  useEffect(() => {
+    if (activeTab === "team") api.get<{ data: TeamMember[] }>("/api/agency/team").then((result) => setTeam(result.data)).catch(() => {});
+    if (activeTab === "documents" || activeTab === "certifications") loadFiles();
+  }, [activeTab]);
+
+  function loadFiles() { api.get<{ data: AgencyFile[] }>("/api/agency/files").then((result) => setAgencyFiles(result.data)).catch(() => {}); }
+
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>, category: AgencyFile["category"]) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const title = window.prompt(category === "certification" ? "Certificate name" : "Document name", file.name.replace(/\.[^.]+$/, ""));
+    if (!title?.trim()) { event.target.value = ""; return; }
+    setUploadingCategory(category); setUploadError("");
+    try {
+      const form = new FormData(); form.append("file", file); form.append("category", category); form.append("title", title.trim());
+      await api.post("/api/agency/files", form);
+      loadFiles();
+    } catch (error) { setUploadError(error instanceof Error ? error.message : "Upload failed."); }
+    finally { setUploadingCategory(null); event.target.value = ""; }
+  }
+
+  async function removeFile(id: string) { if (!window.confirm("Remove this file?")) return; await api.delete(`/api/agency/files/${id}`); loadFiles(); }
 
   async function handleSave() {
     setSaving(true);
@@ -167,26 +198,26 @@ export default function AgencyProfilePage() {
 {/* Tab Interface */}
 <div className="mb-card-gap">
 <div className="flex gap-10 border-b border-outline-variant/30 px-4">
-<button className="pb-4 tab-active font-body-lg text-body-lg flex items-center gap-2 transition-all">
+<button onClick={() => setActiveTab("general")} className={activeTab === "general" ? "pb-4 tab-active font-body-lg text-body-lg flex items-center gap-2 transition-all" : "pb-4 text-on-surface-variant hover:text-primary font-body-lg text-body-lg flex items-center gap-2 transition-all"}>
 <span className="material-symbols-outlined">info</span>
                     General Info
                 </button>
-<button className="pb-4 text-on-surface-variant hover:text-primary font-body-lg text-body-lg flex items-center gap-2 transition-all">
+<button onClick={() => setActiveTab("team")} className={activeTab === "team" ? "pb-4 tab-active font-body-lg text-body-lg flex items-center gap-2 transition-all" : "pb-4 text-on-surface-variant hover:text-primary font-body-lg text-body-lg flex items-center gap-2 transition-all"}>
 <span className="material-symbols-outlined">group</span>
                     Team Members
                 </button>
-<button className="pb-4 text-on-surface-variant hover:text-primary font-body-lg text-body-lg flex items-center gap-2 transition-all">
+<button onClick={() => setActiveTab("documents")} className={activeTab === "documents" ? "pb-4 tab-active font-body-lg text-body-lg flex items-center gap-2 transition-all" : "pb-4 text-on-surface-variant hover:text-primary font-body-lg text-body-lg flex items-center gap-2 transition-all"}>
 <span className="material-symbols-outlined">description</span>
                     Business Documents
                 </button>
-<button className="pb-4 text-on-surface-variant hover:text-primary font-body-lg text-body-lg flex items-center gap-2 transition-all">
+<button onClick={() => setActiveTab("certifications")} className={activeTab === "certifications" ? "pb-4 tab-active font-body-lg text-body-lg flex items-center gap-2 transition-all" : "pb-4 text-on-surface-variant hover:text-primary font-body-lg text-body-lg flex items-center gap-2 transition-all"}>
 <span className="material-symbols-outlined">workspace_premium</span>
                     Certifications
                 </button>
 </div>
 </div>
 {/* Dashboard Grid / Content Area */}
-<div className="grid grid-cols-12 gap-card-gap">
+{activeTab === "general" && <div className="grid grid-cols-12 gap-card-gap">
 {/* Left Column: Services & Description */}
 <div className="col-span-12 lg:col-span-8 space-y-card-gap">
 {/* Services Card */}
@@ -336,7 +367,10 @@ export default function AgencyProfilePage() {
 </div>
 </div>
 </div>
-</div>
+</div>}
+{activeTab === "team" && <section className="ambient-card bg-surface-container-lowest rounded-[24px] p-container-padding"><div className="flex justify-between items-center mb-6"><div><h3 className="font-headline-sm text-headline-sm text-on-surface">Team Members</h3><p className="text-body-md text-on-surface-variant mt-1">Manage team roles from Settings.</p></div><Link href="/agency/settings" className="bg-primary text-on-primary px-5 py-2.5 rounded-xl font-bold text-label-md">Manage Team</Link></div><div className="divide-y divide-outline-variant/20">{team.length === 0 ? <p className="py-10 text-center text-on-surface-variant">No team members have been invited yet.</p> : team.map((member) => <div key={member.id} className="flex items-center justify-between gap-4 py-4"><div className="flex items-center gap-3"><div className="w-11 h-11 rounded-full bg-secondary-fixed flex items-center justify-center font-bold text-primary">{member.fullName.slice(0, 1).toUpperCase()}</div><div><p className="font-semibold text-on-surface">{member.fullName}</p><p className="text-label-md text-on-surface-variant">{member.email}</p></div></div><div className="text-right"><p className="text-label-md font-bold text-primary">{member.role}</p><p className="text-label-md text-on-surface-variant"><span className={`inline-block w-2 h-2 rounded-full mr-1 ${member.status === "active" ? "bg-green-500" : "bg-outline"}`}></span>{member.status === "active" ? "Active" : "Pending invite"}</p></div></div>)}</div></section>}
+{activeTab === "documents" && <FilePanel category="business_document" files={agencyFiles.filter((file) => file.category === "business_document")} uploading={uploadingCategory === "business_document"} error={uploadError} onUpload={handleFileUpload} onDelete={removeFile} />}
+{activeTab === "certifications" && <FilePanel category="certification" files={agencyFiles.filter((file) => file.category === "certification")} uploading={uploadingCategory === "certification"} error={uploadError} onUpload={handleFileUpload} onDelete={removeFile} />}
 </main>
 {/* Footer */}
 <footer className="w-full bg-surface-container-lowest dark:bg-on-tertiary-fixed border-t border-outline-variant/30 dark:border-outline/20 px-margin-desktop py-gutter ml-[260px] w-[calc(100%-260px)] flex flex-col md:flex-row justify-between items-center mt-20">
@@ -354,4 +388,13 @@ export default function AgencyProfilePage() {
 
 </>
   );
+}
+
+function FilePanel({ category, files, uploading, error, onUpload, onDelete }: { category: AgencyFile["category"]; files: AgencyFile[]; uploading: boolean; error: string; onUpload: (event: React.ChangeEvent<HTMLInputElement>, category: AgencyFile["category"]) => void; onDelete: (id: string) => void }) {
+  const certification = category === "certification";
+  return <section className="ambient-card bg-surface-container-lowest rounded-[24px] p-container-padding">
+    <div className="flex flex-col sm:flex-row justify-between gap-4 mb-7"><div><span className="material-symbols-outlined text-primary text-4xl">{certification ? "workspace_premium" : "business_center"}</span><h3 className="font-headline-sm text-headline-sm text-on-surface mt-3">{certification ? "Certifications" : "Business Documents"}</h3><p className="text-body-md text-on-surface-variant mt-2">{certification ? "Upload credentials that students can view on your agency profile." : "Upload your licence, registration, tax, or other business records. These remain private."}</p></div><label className="h-fit cursor-pointer bg-primary text-on-primary px-5 py-3 rounded-xl font-bold inline-flex gap-2 items-center"><span className="material-symbols-outlined text-sm">upload_file</span>{uploading ? "Uploading..." : "Upload file"}<input className="hidden" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" disabled={uploading} onChange={(event) => onUpload(event, category)} /></label></div>
+    {error && <p className="mb-4 text-error text-sm">{error}</p>}
+    <div className="space-y-3">{files.length === 0 ? <p className="py-8 text-center text-on-surface-variant">No {certification ? "certificates" : "business documents"} uploaded yet.</p> : files.map((file) => <div key={file.id} className="flex items-center justify-between gap-3 p-4 rounded-xl bg-surface-container-low"><div className="min-w-0 flex items-center gap-3"><span className="material-symbols-outlined text-primary">{file.fileName.toLowerCase().endsWith("pdf") ? "picture_as_pdf" : "description"}</span><div className="min-w-0"><p className="font-bold text-on-surface truncate">{file.title}</p><p className="text-sm text-on-surface-variant truncate">{file.fileName}</p></div></div><div className="flex gap-2">{certification && <a href={`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/agency/files/${file.id}/file`} target="_blank" rel="noreferrer" className="p-2 text-primary" title="View file"><span className="material-symbols-outlined">visibility</span></a>}<button onClick={() => onDelete(file.id)} className="p-2 text-error" title="Delete file"><span className="material-symbols-outlined">delete</span></button></div></div>)}</div>
+  </section>;
 }

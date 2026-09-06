@@ -11,9 +11,30 @@ interface NotifPrefs {
   emailOnNewStudentLead: boolean;
 }
 
+interface AccountSettings {
+  language: "en-GB" | "en-US" | "fr-FR" | "es-ES" | "de-DE";
+  timezone: "Etc/GMT" | "Europe/Paris" | "America/New_York";
+  currency: "GBP" | "USD" | "EUR";
+  displayMode: "light" | "dark";
+}
+
+type TeamRole = "Admin" | "Senior Agent" | "Counselor" | "Support";
+interface TeamMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: TeamRole;
+  status: "pending" | "active";
+}
+const TEAM_ROLES: TeamRole[] = ["Admin", "Senior Agent", "Counselor", "Support"];
+
+const defaultSettings: AccountSettings = { language: "en-GB", timezone: "Etc/GMT", currency: "GBP", displayMode: "light" };
+
 export default function AgencySettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>({
@@ -21,10 +42,75 @@ export default function AgencySettingsPage() {
     emailOnMessage: true,
     emailOnNewStudentLead: true,
   });
+  const [accountSettings, setAccountSettings] = useState<AccountSettings>(defaultSettings);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<TeamRole>("Counselor");
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     api.get<NotifPrefs>("/api/agency/notification-preferences").then(setNotifPrefs).catch(() => {});
+    api.get<AccountSettings>("/api/agency/settings").then((settings) => {
+      setAccountSettings(settings);
+      document.documentElement.classList.toggle("dark", settings.displayMode === "dark");
+      document.documentElement.lang = settings.language.split("-")[0];
+    }).catch(() => {});
+    api.get<{ data: TeamMember[] }>("/api/agency/team").then((result) => setTeam(result.data)).catch(() => {});
   }, []);
+
+  async function inviteMember() {
+    if (!inviteName.trim() || !inviteEmail.trim()) return;
+    setInviting(true);
+    setMessage(null);
+    try {
+      const member = await api.post<TeamMember>("/api/agency/team", { fullName: inviteName, email: inviteEmail, role: inviteRole });
+      setTeam((current) => [...current, member]);
+      setInviteName(""); setInviteEmail(""); setInviteRole("Counselor"); setShowInvite(false);
+      setMessage({ type: "success", text: "Team invitation created." });
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't invite this team member." });
+    } finally { setInviting(false); }
+  }
+
+  async function updateMember(member: TeamMember, update: Partial<Pick<TeamMember, "role" | "status">>) {
+    try {
+      const saved = await api.patch<TeamMember>(`/api/agency/team/${member.id}`, update);
+      setTeam((current) => current.map((item) => item.id === saved.id ? saved : item));
+    } catch (err) { setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't update team member." }); }
+  }
+
+  async function removeMember(id: string) {
+    if (!window.confirm("Remove this member from your agency team?")) return;
+    try {
+      await api.delete(`/api/agency/team/${id}`);
+      setTeam((current) => current.filter((member) => member.id !== id));
+    } catch (err) { setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't remove team member." }); }
+  }
+
+  async function saveAccountSettings(next: AccountSettings) {
+    const previous = accountSettings;
+    setAccountSettings(next);
+    document.documentElement.classList.toggle("dark", next.displayMode === "dark");
+    document.documentElement.lang = next.language.split("-")[0];
+    setSavingSettings(true);
+    try {
+      const saved = await api.patch<AccountSettings>("/api/agency/settings", next);
+      setAccountSettings(saved);
+      document.documentElement.classList.toggle("dark", saved.displayMode === "dark");
+      document.documentElement.lang = saved.language.split("-")[0];
+      setMessage({ type: "success", text: "Regional and display preferences saved." });
+    } catch (err) {
+      setAccountSettings(previous);
+      document.documentElement.classList.toggle("dark", previous.displayMode === "dark");
+      document.documentElement.lang = previous.language.split("-")[0];
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't save preferences." });
+    } finally {
+      setSavingSettings(false);
+    }
+  }
 
   async function saveNotifPref(key: keyof NotifPrefs, value: boolean) {
     setNotifPrefs((prev) => ({ ...prev, [key]: value }));
@@ -97,9 +183,9 @@ export default function AgencySettingsPage() {
 <h2 className="font-headline-lg text-headline-lg text-primary">Agency Settings</h2>
 <p className="text-body-lg font-body-lg text-on-surface-variant mt-1">Manage your agency&apos;s profile, security, and consulting team.</p>
 </div>
-<div className="flex items-center gap-3">
-<button className="px-6 py-2.5 rounded-xl border border-outline-variant text-on-surface font-semibold hover:bg-surface-container transition-colors">Discard Changes</button>
-<button className="px-6 py-2.5 rounded-xl bg-primary text-white font-semibold shadow-lg hover:shadow-primary/20 transition-all active:scale-95">Save Preferences</button>
+<div className="flex items-center gap-2 rounded-full bg-surface-container-low px-4 py-2 text-label-md font-semibold text-on-surface-variant">
+<span className="material-symbols-outlined text-[18px] text-secondary">cloud_done</span>
+Preferences save automatically
 </div>
 </div>
 {/* Settings Bento Grid */}
@@ -112,24 +198,34 @@ export default function AgencySettingsPage() {
 </div>
 <h3 className="font-headline-sm text-headline-sm text-primary">Account Security</h3>
 </div>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div className="max-w-xl">
 <div className="space-y-6">
 <div>
 <label className="block text-label-md font-label-md text-on-surface-variant mb-2">Change Password</label>
+<div className="relative mb-3">
 <input
-  className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-body-md focus:ring-2 focus:ring-primary/20 mb-3"
+  className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 pr-12 text-body-md focus:ring-2 focus:ring-primary/20"
   placeholder="Current Password"
-  type="password"
+  type={showCurrentPassword ? "text" : "password"}
   value={currentPassword}
   onChange={(e) => setCurrentPassword(e.target.value)}
 />
+<button type="button" onClick={() => setShowCurrentPassword((visible) => !visible)} aria-label={showCurrentPassword ? "Hide current password" : "Show current password"} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-outline hover:text-primary transition-colors">
+<span className="material-symbols-outlined text-[20px]">{showCurrentPassword ? "visibility_off" : "visibility"}</span>
+</button>
+</div>
+<div className="relative">
 <input
-  className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-body-md focus:ring-2 focus:ring-primary/20"
+  className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 pr-12 text-body-md focus:ring-2 focus:ring-primary/20"
   placeholder="New Password"
-  type="password"
+  type={showNewPassword ? "text" : "password"}
   value={newPassword}
   onChange={(e) => setNewPassword(e.target.value)}
 />
+<button type="button" onClick={() => setShowNewPassword((visible) => !visible)} aria-label={showNewPassword ? "Hide new password" : "Show new password"} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-outline hover:text-primary transition-colors">
+<span className="material-symbols-outlined text-[20px]">{showNewPassword ? "visibility_off" : "visibility"}</span>
+</button>
+</div>
 {message && (
   <p className={`text-[11px] mt-2 ${message.type === "success" ? "text-primary" : "text-error"}`}>{message.text}</p>
 )}
@@ -142,57 +238,36 @@ export default function AgencySettingsPage() {
 </button>
 </div>
 </div>
-<div className="bg-secondary-fixed/30 rounded-2xl p-6 border border-secondary-fixed">
-<div className="flex items-start justify-between mb-4">
-<div>
-<h4 className="font-body-lg font-bold text-primary">Two-Factor Authentication</h4>
-<p className="text-body-md text-on-surface-variant mt-1">Coming soon — not yet available on your account.</p>
-</div>
-<label className="relative inline-flex items-center cursor-not-allowed opacity-50">
-<input disabled className="sr-only peer" type="checkbox"/>
-<div className="w-11 h-6 bg-outline-variant rounded-full"></div>
-</label>
-</div>
-<div className="flex items-center gap-4 mt-6 opacity-50">
-<div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
-<span className="material-symbols-outlined text-primary">vibration</span>
-</div>
-<div>
-<p className="text-label-md font-semibold text-primary">Authenticator App</p>
-<p className="text-xs text-on-surface-variant">Not connected</p>
-</div>
-</div>
-</div>
 </div>
 </section>
 {/* Billing & Subscription Status */}
-<section className="col-span-12 lg:col-span-4 bg-primary text-white rounded-[24px] p-container-padding card-shadow relative overflow-hidden group">
+<section className="col-span-12 lg:col-span-4 bg-primary dark:bg-[#1f3f91] text-white rounded-[24px] p-container-padding card-shadow relative overflow-hidden group">
 {/* Visual Decoration */}
 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
 <div className="relative z-10">
 <div className="flex justify-between items-start mb-10">
 <div>
-<span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Premium Agency</span>
+<span className="px-3 py-1 bg-secondary-container dark:bg-[#6f8fff] text-on-secondary-container dark:text-[#0b256d] rounded-full text-[10px] font-bold uppercase tracking-wider">Premium Agency</span>
 <h3 className="font-headline-md text-headline-md mt-3">StudyBridge Plus</h3>
 </div>
 <span className="material-symbols-outlined text-white/50">verified</span>
 </div>
 <div className="space-y-4 mb-10">
 <div className="flex justify-between items-center text-sm">
-<span className="text-primary-fixed-dim">Next billing date</span>
+<span className="text-primary-fixed-dim dark:text-[#dce5ff]">Next billing date</span>
 <span className="font-bold">Oct 12, 2024</span>
 </div>
 <div className="flex justify-between items-center text-sm">
-<span className="text-primary-fixed-dim">Active Consultants</span>
+<span className="text-primary-fixed-dim dark:text-[#dce5ff]">Active Consultants</span>
 <span className="font-bold">12 / 20</span>
 </div>
 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-<div className="h-full bg-secondary-container w-3/5"></div>
+<div className="h-full bg-secondary-container dark:bg-[#93aaff] w-3/5"></div>
 </div>
 </div>
 <div className="grid grid-cols-2 gap-3">
-<button disabled className="py-3 bg-white/10 rounded-xl text-label-md font-semibold opacity-50 cursor-not-allowed">Manage Plan (coming soon)</button>
-<button disabled className="py-3 bg-white/40 text-primary rounded-xl text-label-md font-bold opacity-50 cursor-not-allowed">Payment Methods (coming soon)</button>
+<button disabled className="py-3 bg-white/15 text-white rounded-xl text-label-md font-semibold opacity-70 cursor-not-allowed">Manage Plan (coming soon)</button>
+<button disabled className="py-3 bg-white/25 text-white rounded-xl text-label-md font-bold opacity-70 cursor-not-allowed">Payment Methods (coming soon)</button>
 </div>
 </div>
 </section>
@@ -252,6 +327,55 @@ export default function AgencySettingsPage() {
 </div>
 </div>
 </section>
+{/* Regional & display preferences */}
+<section className="col-span-12 lg:col-span-5 rounded-[24px] bg-surface-container-lowest dark:bg-[#202126] p-container-padding card-shadow border border-outline-variant/15 dark:border-white/5">
+<div className="flex items-center gap-3 mb-7">
+<div className="w-11 h-11 rounded-full bg-primary-container dark:bg-[#dce1ff] flex items-center justify-center">
+<span className="material-symbols-outlined text-primary dark:text-[#1b347a]">language</span>
+</div>
+<div>
+<h3 className="font-headline-sm text-headline-sm text-primary dark:text-white">Regional</h3>
+<p className="text-label-md text-on-surface-variant dark:text-[#bfc3ce] mt-0.5">Language, timezone and currency</p>
+</div>
+</div>
+<div className="space-y-5">
+<label className="block">
+<span className="block text-label-md font-semibold text-on-surface-variant dark:text-[#d7dbe5] mb-2">Display Language</span>
+<select value={accountSettings.language} onChange={(e) => saveAccountSettings({ ...accountSettings, language: e.target.value as AccountSettings["language"] })} disabled={savingSettings} className="w-full appearance-none rounded-2xl bg-surface-container-low dark:bg-[#292a30] px-4 py-3 text-body-md text-on-surface dark:text-white border-0 focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
+<option value="en-GB">English (United Kingdom)</option>
+<option value="en-US">English (United States)</option>
+<option value="fr-FR">Français</option>
+<option value="es-ES">Español</option>
+<option value="de-DE">Deutsch</option>
+</select>
+</label>
+<label className="block">
+<span className="block text-label-md font-semibold text-on-surface-variant dark:text-[#d7dbe5] mb-2">Timezone</span>
+<select value={accountSettings.timezone} onChange={(e) => saveAccountSettings({ ...accountSettings, timezone: e.target.value as AccountSettings["timezone"] })} disabled={savingSettings} className="w-full appearance-none rounded-2xl bg-surface-container-low dark:bg-[#292a30] px-4 py-3 text-body-md text-on-surface dark:text-white border-0 focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
+<option value="Etc/GMT">(GMT+00:00) Greenwich Mean Time</option>
+<option value="Europe/Paris">(GMT+01:00) Central European Time</option>
+<option value="America/New_York">(GMT-05:00) Eastern Time</option>
+</select>
+</label>
+<label className="block">
+<span className="block text-label-md font-semibold text-on-surface-variant dark:text-[#d7dbe5] mb-2">Currency</span>
+<select value={accountSettings.currency} onChange={(e) => saveAccountSettings({ ...accountSettings, currency: e.target.value as AccountSettings["currency"] })} disabled={savingSettings} className="w-full appearance-none rounded-2xl bg-surface-container-low dark:bg-[#292a30] px-4 py-3 text-body-md text-on-surface dark:text-white border-0 focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
+<option value="GBP">GBP (£)</option>
+<option value="USD">USD ($)</option>
+<option value="EUR">EUR (€)</option>
+</select>
+</label>
+</div>
+<div className="mt-8 rounded-[22px] bg-surface-container-low dark:bg-[#292a30] p-5">
+<p className="font-body-lg font-bold text-primary dark:text-[#4d74ee]">Display Mode</p>
+<p className="text-label-md text-on-surface-variant dark:text-[#9ba4bf] mt-1">Choose how StudyBridge looks on your device.</p>
+<div className="mt-5 flex gap-3">
+<button type="button" onClick={() => saveAccountSettings({ ...accountSettings, displayMode: "light" })} disabled={savingSettings} className={`flex items-center gap-2 rounded-full px-5 py-3 text-label-md font-bold border transition-all ${accountSettings.displayMode === "light" ? "bg-white text-primary border-primary shadow-sm" : "bg-transparent text-on-surface-variant dark:text-[#c5cad7] border-outline-variant/50"}`}><span className="material-symbols-outlined">light_mode</span>Light</button>
+<button type="button" onClick={() => saveAccountSettings({ ...accountSettings, displayMode: "dark" })} disabled={savingSettings} className={`flex items-center gap-2 rounded-full px-5 py-3 text-label-md font-bold border transition-all ${accountSettings.displayMode === "dark" ? "bg-[#4168db] text-white border-[#7796ff] shadow-lg shadow-[#4168db]/30" : "bg-transparent text-on-surface-variant dark:text-[#c5cad7] border-outline-variant/50"}`}><span className="material-symbols-outlined">dark_mode</span>Dark</button>
+</div>
+{message && <p className={`mt-4 text-label-md font-medium ${message.type === "success" ? "text-secondary dark:text-[#9cc9a0]" : "text-error"}`}>{message.text}</p>}
+</div>
+</section>
 {/* Team Management */}
 <section className="col-span-12 lg:col-span-7 bg-surface-container-lowest rounded-[24px] p-container-padding card-shadow">
 <div className="flex justify-between items-center mb-8">
@@ -261,11 +385,17 @@ export default function AgencySettingsPage() {
 </div>
 <h3 className="font-headline-sm text-headline-sm text-primary">Team Management</h3>
 </div>
-<button disabled title="Multi-seat team accounts aren't available yet" className="flex items-center gap-2 text-outline font-bold px-4 py-2 rounded-xl opacity-50 cursor-not-allowed">
+<button type="button" onClick={() => setShowInvite((open) => !open)} className="flex items-center gap-2 text-primary font-bold px-4 py-2 rounded-xl hover:bg-primary/5 transition-colors">
 <span className="material-symbols-outlined text-sm">person_add</span>
-<span className="text-label-md">Invite Consultant (coming soon)</span>
+<span className="text-label-md">Invite Consultant</span>
 </button>
 </div>
+{showInvite && <div className="mb-6 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-3 rounded-2xl bg-surface-container-low p-4">
+<input value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="rounded-xl border-0 bg-surface-container-lowest px-3 py-2.5 text-body-md focus:ring-2 focus:ring-primary/20" placeholder="Consultant name" />
+<input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="rounded-xl border-0 bg-surface-container-lowest px-3 py-2.5 text-body-md focus:ring-2 focus:ring-primary/20" placeholder="Email address" type="email" />
+<select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as TeamRole)} className="rounded-xl border-0 bg-surface-container-lowest px-3 py-2.5 text-body-md focus:ring-2 focus:ring-primary/20">{TEAM_ROLES.map((role) => <option key={role}>{role}</option>)}</select>
+<button type="button" onClick={inviteMember} disabled={inviting || !inviteName.trim() || !inviteEmail.trim()} className="rounded-xl bg-primary px-4 py-2.5 font-label-md font-bold text-on-primary disabled:opacity-50">{inviting ? "Inviting..." : "Invite"}</button>
+</div>}
 <div className="overflow-x-auto">
 <table className="w-full">
 <thead>
@@ -277,81 +407,13 @@ export default function AgencySettingsPage() {
 </tr>
 </thead>
 <tbody className="divide-y divide-outline-variant/10">
-<tr className="group hover:bg-surface-container-low/50 transition-colors">
-<td className="py-4">
-<div className="flex items-center gap-3">
-<div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center font-bold text-primary">JD</div>
-<div>
-<p className="font-body-md font-semibold text-primary">Julianne Davies</p>
-<p className="text-[11px] text-on-surface-variant">julianne.d@studybridge.com</p>
-</div>
-</div>
-</td>
-<td className="py-4">
-<span className="px-2.5 py-1 bg-surface-container rounded-lg text-xs font-medium">Senior Agent</span>
-</td>
-<td className="py-4">
-<div className="flex items-center gap-1.5">
-<span className="w-2 h-2 rounded-full bg-green-500"></span>
-<span className="text-xs text-on-surface-variant">Active</span>
-</div>
-</td>
-<td className="py-4 text-right">
-<button className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant opacity-0 group-hover:opacity-100 transition-all">
-<span className="material-symbols-outlined">more_vert</span>
-</button>
-</td>
-</tr>
-<tr className="group hover:bg-surface-container-low/50 transition-colors">
-<td className="py-4">
-<div className="flex items-center gap-3">
-<div className="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center font-bold text-tertiary">ML</div>
-<div>
-<p className="font-body-md font-semibold text-primary">Marcus Loh</p>
-<p className="text-[11px] text-on-surface-variant">marcus.loh@studybridge.com</p>
-</div>
-</div>
-</td>
-<td className="py-4">
-<span className="px-2.5 py-1 bg-surface-container rounded-lg text-xs font-medium">Support</span>
-</td>
-<td className="py-4">
-<div className="flex items-center gap-1.5">
-<span className="w-2 h-2 rounded-full bg-green-500"></span>
-<span className="text-xs text-on-surface-variant">Active</span>
-</div>
-</td>
-<td className="py-4 text-right">
-<button className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant opacity-0 group-hover:opacity-100 transition-all">
-<span className="material-symbols-outlined">more_vert</span>
-</button>
-</td>
-</tr>
-<tr className="group hover:bg-surface-container-low/50 transition-colors">
-<td className="py-4">
-<div className="flex items-center gap-3">
-<div className="w-10 h-10 rounded-full bg-error-container/30 flex items-center justify-center font-bold text-error">ES</div>
-<div>
-<p className="font-body-md font-semibold text-primary">Elena Soto</p>
-<p className="text-[11px] text-on-surface-variant">elena.s@studybridge.com</p>
-</div>
-</div>
-</td>
-<td className="py-4">
-<span className="px-2.5 py-1 bg-surface-container rounded-lg text-xs font-medium">Counselor</span>
-</td>
-<td className="py-4">
-<div className="flex items-center gap-1.5">
-<span className="w-2 h-2 rounded-full bg-outline-variant"></span>
-<span className="text-xs text-on-surface-variant">Pending Invite</span>
-</div>
-</td>
-<td className="py-4 text-right">
-<button className="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant opacity-0 group-hover:opacity-100 transition-all">
-<span className="material-symbols-outlined text-sm">cancel</span>
-</button>
-</td>
-</tr>
+{team.length === 0 && <tr><td colSpan={4} className="py-8 text-center text-body-md text-on-surface-variant">No team members yet. Invite your first consultant.</td></tr>}
+{team.map((member) => <tr key={member.id} className="hover:bg-surface-container-low/50 transition-colors">
+<td className="py-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center font-bold text-primary">{member.fullName.split(" ").map((name) => name[0]).join("").slice(0, 2).toUpperCase()}</div><div><p className="font-body-md font-semibold text-primary">{member.fullName}</p><p className="text-[11px] text-on-surface-variant">{member.email}</p></div></div></td>
+<td className="py-4"><select aria-label={`Role for ${member.fullName}`} value={member.role} onChange={(e) => updateMember(member, { role: e.target.value as TeamRole })} className="rounded-lg border-0 bg-surface-container px-2.5 py-1 text-xs font-medium focus:ring-2 focus:ring-primary/20">{TEAM_ROLES.map((role) => <option key={role}>{role}</option>)}</select></td>
+<td className="py-4"><button type="button" onClick={() => updateMember(member, { status: member.status === "active" ? "pending" : "active" })} className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-primary"><span className={`w-2 h-2 rounded-full ${member.status === "active" ? "bg-green-500" : "bg-outline-variant"}`}></span>{member.status === "active" ? "Active" : "Pending Invite"}</button></td>
+<td className="py-4 text-right"><button type="button" onClick={() => removeMember(member.id)} title="Remove team member" className="p-2 text-on-surface-variant hover:bg-error/10 hover:text-error rounded-lg transition-colors"><span className="material-symbols-outlined text-[20px]">delete_outline</span></button></td>
+</tr>)}
 </tbody>
 </table>
 </div>
