@@ -7,6 +7,7 @@ import {
   getMyNotificationPreferences,
   updateMyNotificationPreferences,
 } from "@/controllers/notificationPreferencesController";
+import { deactivateMyAccount, getMySessions, getMySettings, revokeMySession, updateMySettings } from "@/controllers/studentSettingsController";
 
 const router = Router();
 
@@ -19,5 +20,11 @@ router.get("/recommendations", asyncHandler(getMyRecommendations));
 
 router.get("/notification-preferences", asyncHandler(getMyNotificationPreferences));
 router.patch("/notification-preferences", asyncHandler(updateMyNotificationPreferences));
+
+router.get("/settings", asyncHandler(getMySettings));
+router.patch("/settings", asyncHandler(updateMySettings));
+router.get("/sessions", asyncHandler(getMySessions));
+router.delete("/sessions/:id", asyncHandler(revokeMySession));
+router.post("/deactivate", asyncHandler(deactivateMyAccount));
 
 export default router;

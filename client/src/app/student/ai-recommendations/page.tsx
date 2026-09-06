@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import { api } from "@/lib/api";
+import { universityImage } from "@/lib/university-images";
+import { useLocale } from "@/lib/locale-context";
 
 interface Recommendation {
   programId: string;
@@ -15,11 +17,13 @@ interface Recommendation {
   country: string;
   ranking: number | null;
   logoUrl: string | null;
+  coverImageUrl: string | null;
   matchScore: number;
   reasons: string[];
 }
 
 export default function RecommendationsPage() {
+  const { t } = useLocale();
   const [data, setData] = useState<Recommendation[]>([]);
   const [hasPreferences, setHasPreferences] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -43,15 +47,15 @@ export default function RecommendationsPage() {
 <main className="ml-[260px] min-h-screen">
 
 <header className="flex justify-between items-center w-full px-margin-desktop h-16 sticky top-0 z-40 bg-surface-container-lowest shadow-[0px_2px_4px_rgba(0,0,0,0.02)]">
-<h2 className="font-headline-sm text-headline-sm font-bold text-primary">Recommended For You</h2>
+<h2 className="font-headline-sm text-headline-sm font-bold text-primary">{t("recommendedForYou")}</h2>
 </header>
 
 <div className="p-margin-desktop space-y-8">
 
 <div>
-<h2 className="font-headline-lg text-headline-lg text-primary mb-2">Programs Matched to Your Profile</h2>
+<h2 className="font-headline-lg text-headline-lg text-primary mb-2">{t("matchedPrograms")}</h2>
 <p className="font-body-lg text-body-lg text-on-surface-variant">
-Ranked using your preferred countries and fields of study from your profile — a transparent match, not a black-box score.
+{t("rankedDescription")}
 </p>
 </div>
 
@@ -59,28 +63,27 @@ Ranked using your preferred countries and fields of study from your profile — 
 <div className="bg-primary-container/10 border border-primary/20 rounded-2xl p-6 flex items-center gap-4">
 <span className="material-symbols-outlined text-primary text-3xl">info</span>
 <div>
-<p className="font-body-lg font-bold text-on-surface">Set your preferences to get better matches</p>
-<p className="font-body-md text-on-surface-variant">
-Add your preferred countries and fields of study on your <Link href="/student/profile" className="text-primary font-bold hover:underline">profile page</Link> to personalize these results.
-</p>
+<p className="font-body-lg font-bold text-on-surface">{t("setPreferences")}</p>
+<p className="font-body-md text-on-surface-variant">{t("setPreferencesDescription")}</p>
 </div>
 </div>
 )}
 
 {!loading && data.length === 0 && (
-  <p className="text-on-surface-variant font-body-md">No programs in the catalog yet.</p>
+  <p className="text-on-surface-variant font-body-md">{t("noPrograms")}</p>
 )}
 
 {top && (
 <div className="bg-surface-container-lowest rounded-2xl ambient-shadow p-container-padding flex flex-col md:flex-row gap-8">
 <div className="w-full md:w-1/3 aspect-[4/5] rounded-xl bg-surface-container flex items-center justify-center relative overflow-hidden">
-{top.logoUrl ? (
-  <img className="w-full h-full object-cover" alt={top.universityName} src={top.logoUrl} />
-) : (
-  <span className="material-symbols-outlined text-primary text-6xl">school</span>
-)}
+<img
+  className="w-full h-full object-cover"
+  alt={`${top.universityName} campus`}
+  src={universityImage(top.universityName, top.coverImageUrl, top.logoUrl)}
+  onError={(event) => { event.currentTarget.src = universityImage("", null, null); }}
+/>
 <div className="absolute top-4 left-4 bg-primary text-on-primary px-3 py-1.5 rounded-full font-bold text-label-md shadow-lg">
-{top.matchScore}% Match
+{top.matchScore}% {t("match")}
 </div>
 </div>
 <div className="flex-1 flex flex-col">
@@ -93,7 +96,7 @@ Add your preferred countries and fields of study on your <Link href="/student/pr
 </div>
 {top.reasons.length > 0 && (
 <div className="bg-surface-bright rounded-xl p-4 border border-outline-variant/30 mb-6">
-<span className="font-label-md text-label-md text-on-surface font-bold uppercase tracking-tight block mb-3">Why it matches</span>
+<span className="font-label-md text-label-md text-on-surface font-bold uppercase tracking-tight block mb-3">{t("whyMatches")}</span>
 <ul className="space-y-2">
 {top.reasons.map((r) => (
 <li key={r} className="flex items-center gap-2 text-body-md text-on-surface-variant">
@@ -105,7 +108,7 @@ Add your preferred countries and fields of study on your <Link href="/student/pr
 </div>
 )}
 <Link href={`/universities/${top.universityId}`} className="mt-auto bg-primary text-on-primary py-3 rounded-xl font-headline-sm text-label-md text-center hover:shadow-lg transition-all">
-View Program Details
+{t("viewProgram")}
 </Link>
 </div>
 </div>
@@ -123,7 +126,7 @@ View Program Details
 <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant rounded-full text-[11px]">{r.country}</span>
 {r.ranking && <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant rounded-full text-[11px]">#{r.ranking}</span>}
 </div>
-<Link href={`/universities/${r.universityId}`} className="mt-auto text-primary font-bold text-label-md hover:underline">View Details</Link>
+<Link href={`/universities/${r.universityId}`} className="mt-auto text-primary font-bold text-label-md hover:underline">{t("viewDetails")}</Link>
 </div>
 ))}
 </div>

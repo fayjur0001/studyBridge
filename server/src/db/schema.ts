@@ -284,7 +284,20 @@ export const refreshTokens = pgTable("refresh_tokens", {
   tokenHash: varchar("token_hash", { length: 255 }).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   revokedAt: timestamp("revoked_at"),
+  deviceName: varchar("device_name", { length: 255 }),
+  ipAddress: varchar("ip_address", { length: 64 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const userSettings = pgTable("user_settings", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  language: varchar("language", { length: 80 }).notNull().default("en-GB"),
+  timezone: varchar("timezone", { length: 80 }).notNull().default("Etc/GMT"),
+  currency: varchar("currency", { length: 3 }).notNull().default("GBP"),
+  displayMode: varchar("display_mode", { length: 10 }).notNull().default("light"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const passwordResetTokens = pgTable("password_reset_tokens", {

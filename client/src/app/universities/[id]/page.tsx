@@ -7,6 +7,7 @@ import PublicFooter from "@/components/layout/PublicFooter";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { University, Program } from "@/lib/types";
+import { universityImage } from "@/lib/university-images";
 
 interface UniversityDetail extends University {
   programs: Program[];
@@ -75,7 +76,7 @@ export default function UniversityDetailPage() {
 
 <section className="relative w-full h-[600px] bg-primary overflow-hidden">
 <div className="absolute inset-0 z-0">
-<div className="w-full h-full bg-cover bg-center opacity-70" style={{backgroundImage: `url('${university?.coverImageUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuAzi4vZ6dvnvdgoFUtI7FrKznBV6cGD7R2SjLVrJ6LYddMZXp3VI2rDVhMd6g10TDYY_YG9PvLbyZNAX-8indBlqAztjtUXapAsbp_SdAi7kIx3w30qC7oG052u4lBVFEwC5sHAhsVXwFLbFBDuqoe1btN_7OqrZwbziRu5E7tLhcHEtdfqhFILfj9JHSw4_i2GZCAKGvb2Qxdh5x3Dg-KszgiS0JHg6rDm18UQT91N-3N3WePwA-EE"}')`}}></div>
+<div className="w-full h-full bg-cover bg-center opacity-70" style={{backgroundImage: `url('${universityImage(university?.name ?? "", university?.coverImageUrl, university?.logoUrl)}')`}}></div>
 <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent opacity-60"></div>
 </div>
 <div className="relative z-10 max-w-7xl mx-auto h-full flex flex-col justify-end px-margin-desktop pb-16">

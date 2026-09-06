@@ -43,7 +43,18 @@ function refreshCookieOptions() {
   };
 }
 
-async function issueTokens(res: Response, user: { id: string; role: "student" | "agency" | "admin" }) {
+function getDeviceName(userAgent?: string) {
+  if (!userAgent) return "Unknown device";
+  if (/iPhone/i.test(userAgent)) return "iPhone";
+  if (/iPad/i.test(userAgent)) return "iPad";
+  if (/Android/i.test(userAgent)) return "Android device";
+  if (/Macintosh|Mac OS X/i.test(userAgent)) return "Mac";
+  if (/Windows/i.test(userAgent)) return "Windows PC";
+  if (/Linux/i.test(userAgent)) return "Linux device";
+  return "Web browser";
+}
+
+async function issueTokens(req: Request, res: Response, user: { id: string; role: "student" | "agency" | "admin" }) {
   const accessToken = signAccessToken({ sub: user.id, role: user.role });
   const refreshToken = signRefreshToken({ sub: user.id, role: user.role });
 
@@ -51,6 +62,8 @@ async function issueTokens(res: Response, user: { id: string; role: "student" | 
     userId: user.id,
     tokenHash: hashToken(refreshToken),
     expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+    deviceName: getDeviceName(req.get("user-agent")),
+    ipAddress: req.ip,
   });
 
   res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
@@ -92,7 +105,7 @@ export async function register(req: Request, res: Response) {
     });
   }
 
-  const accessToken = await issueTokens(res, user);
+  const accessToken = await issueTokens(req, res, user);
 
   res.status(201).json({
     accessToken,
@@ -119,7 +132,7 @@ export async function login(req: Request, res: Response) {
     throw new AppError("Invalid email or password.", 401);
   }
 
-  const accessToken = await issueTokens(res, user);
+  const accessToken = await issueTokens(req, res, user);
 
   res.json({
     accessToken,
@@ -162,7 +175,7 @@ export async function refresh(req: Request, res: Response) {
     .set({ revokedAt: new Date() })
     .where(eq(refreshTokens.id, stored.id));
 
-  const accessToken = await issueTokens(res, user);
+  const accessToken = await issueTokens(req, res, user);
 
   res.json({ accessToken });
 }

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { Application } from "@/lib/types";
 import { ApplicationStatusBadge, applicationNextStep } from "@/components/applications/ApplicationStatusBadge";
+import { universityImage } from "@/lib/university-images";
 
 interface ApplicationStats {
   total: number;
@@ -148,11 +149,7 @@ export default function ApplicationsPage() {
 <td className="px-8 py-6">
 <div className="flex items-center gap-4">
 <div className="w-12 h-12 rounded-xl bg-blue-soft flex items-center justify-center overflow-hidden border border-outline-variant/20">
-{app.university.logoUrl ? (
-  <img className="w-full h-full object-cover" alt={app.university.name} src={app.university.logoUrl} />
-) : (
-  <span className="material-symbols-outlined text-primary">school</span>
-)}
+<img className="w-full h-full object-cover" alt={`${app.university.name} campus`} src={universityImage(app.university.name, null, app.university.logoUrl)} />
 </div>
 <div>
 <p className="font-body-lg text-body-lg font-bold text-on-surface leading-tight">{app.university.name}</p>

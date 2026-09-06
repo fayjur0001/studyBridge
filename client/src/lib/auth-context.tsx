@@ -25,6 +25,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Apply a student's saved appearance preference on every page, not only
+  // after visiting the Settings screen.
+  useEffect(() => {
+    if (user?.role !== "student") return;
+    api
+      .get<{ displayMode: "light" | "dark"; language: string }>("/api/student/settings")
+      .then(({ displayMode, language }) => {
+        document.documentElement.classList.toggle("dark", displayMode === "dark");
+        document.documentElement.lang = language.split("-")[0] || "en";
+      })
+      .catch(() => {});
+  }, [user?.id, user?.role]);
+
   const refreshUser = useCallback(async () => {
     try {
       const me = await api.get<AuthUser>("/api/auth/me");

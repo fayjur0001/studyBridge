@@ -1,15 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { useLocale } from "@/lib/locale-context";
 
 interface NotifPrefs {
   emailOnApplicationUpdate: boolean;
   emailOnMessage: boolean;
 }
 
+interface AccountSettings {
+  language: "en-GB" | "en-US" | "fr-FR" | "es-ES" | "de-DE";
+  timezone: "Etc/GMT" | "Europe/Paris" | "America/New_York";
+  currency: "GBP" | "USD" | "EUR";
+  displayMode: "light" | "dark";
+}
+
+interface Session {
+  id: string;
+  deviceName: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  isCurrent: boolean;
+}
+
+const defaultSettings: AccountSettings = { language: "en-GB", timezone: "Etc/GMT", currency: "GBP", displayMode: "light" };
+
 export default function StudentSettingsPage() {
+  const router = useRouter();
+  const { logout } = useAuth();
+  const { setLocale } = useLocale();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -20,14 +43,78 @@ export default function StudentSettingsPage() {
     emailOnApplicationUpdate: true,
     emailOnMessage: true,
   });
+  const [accountSettings, setAccountSettings] = useState<AccountSettings>(defaultSettings);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
   useEffect(() => {
     api.get<NotifPrefs>("/api/student/notification-preferences").then(setNotifPrefs).catch(() => {});
+    api.get<AccountSettings>("/api/student/settings").then((settings) => {
+      setAccountSettings(settings);
+      document.documentElement.classList.toggle("dark", settings.displayMode === "dark");
+      document.documentElement.lang = settings.language.split("-")[0];
+      setLocale(settings.language);
+    }).catch(() => {});
+    api.get<Session[]>("/api/student/sessions").then(setSessions).catch(() => {});
   }, []);
 
   async function saveNotifPref(key: keyof NotifPrefs, value: boolean) {
     setNotifPrefs((prev) => ({ ...prev, [key]: value }));
-    await api.patch("/api/student/notification-preferences", { [key]: value }).catch(() => {});
+    try {
+      await api.patch("/api/student/notification-preferences", { [key]: value });
+    } catch {
+      setNotifPrefs((prev) => ({ ...prev, [key]: !value }));
+      setMessage({ type: "error", text: "Couldn't save notification preference." });
+    }
+  }
+
+  async function saveAccountSettings(next: AccountSettings) {
+    const previous = accountSettings;
+    // Reflect a choice immediately; the request below makes it persistent.
+    setAccountSettings(next);
+    document.documentElement.classList.toggle("dark", next.displayMode === "dark");
+    document.documentElement.lang = next.language.split("-")[0];
+    setLocale(next.language);
+    setSavingSettings(true);
+    try {
+      const saved = await api.patch<AccountSettings>("/api/student/settings", next);
+      setAccountSettings(saved);
+      document.documentElement.classList.toggle("dark", saved.displayMode === "dark");
+      document.documentElement.lang = saved.language.split("-")[0];
+      setLocale(saved.language);
+      setMessage({ type: "success", text: "Preferences saved." });
+    } catch (err) {
+      setAccountSettings(previous);
+      document.documentElement.classList.toggle("dark", previous.displayMode === "dark");
+      document.documentElement.lang = previous.language.split("-")[0];
+      setLocale(previous.language);
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't save preferences." });
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function terminateSession(id: string) {
+    try {
+      await api.delete(`/api/student/sessions/${id}`);
+      setSessions((current) => current.filter((session) => session.id !== id));
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't end this session." });
+    }
+  }
+
+  async function deactivateAccount() {
+    if (!window.confirm("Deactivate your account? You will be signed out and an administrator will need to reactivate it.")) return;
+    setDeactivating(true);
+    try {
+      await api.post("/api/student/deactivate");
+      await logout();
+      router.replace("/");
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof ApiError ? err.message : "Couldn't deactivate your account." });
+      setDeactivating(false);
+    }
   }
 
   async function handleChangePassword() {
@@ -148,50 +235,24 @@ export default function StudentSettingsPage() {
 </div>
 <hr className="border-surface-variant/40" />
 
-<div className="flex flex-col md:flex-row gap-6 items-center">
-<div className="w-full md:w-1/3">
-<h5 className="font-body-lg text-body-lg font-semibold text-on-background">Two-Factor Authentication</h5>
-<p className="font-label-md text-label-md text-on-surface-variant mt-1">Add an extra layer of protection to your account.</p>
-</div>
-<div className="flex-1 w-full flex justify-between items-center bg-secondary-fixed/30 p-5 rounded-2xl border border-secondary-fixed">
-<div className="flex items-center gap-3">
-<span className="material-symbols-outlined text-secondary" data-icon="verified_user">verified_user</span>
-<div>
-<p className="font-body-md text-body-md font-semibold text-on-secondary-fixed">2FA is currently <span className="text-error">Disabled</span></p>
-<p className="font-label-md text-label-md text-on-secondary-fixed-variant opacity-80">Requires verification via mobile app.</p>
-</div>
-</div>
-<button className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-md text-label-md font-semibold hover:bg-secondary-container transition-all">Enable Now</button>
-</div>
-</div>
-<hr className="border-surface-variant/40" />
-
 <div className="flex flex-col md:flex-row gap-6 items-start">
 <div className="w-full md:w-1/3">
 <h5 className="font-body-lg text-body-lg font-semibold text-on-background">Active Sessions</h5>
 <p className="font-label-md text-label-md text-on-surface-variant mt-1">Review your recent login activity.</p>
 </div>
 <div className="flex-1 w-full space-y-3">
-<div className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
+{sessions.length === 0 ? <p className="p-4 bg-surface-container-low rounded-xl font-label-md text-on-surface-variant">No active sessions found.</p> : sessions.map((session) => (
+<div key={session.id} className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
 <div className="flex items-center gap-3">
-<span className="material-symbols-outlined text-outline" data-icon="laptop_mac">laptop_mac</span>
+<span className="material-symbols-outlined text-outline">{session.deviceName?.toLowerCase().includes("iphone") || session.deviceName?.toLowerCase().includes("android") ? "smartphone" : "laptop_mac"}</span>
 <div>
-<p className="font-body-md text-body-md font-semibold text-on-surface">MacBook Pro M2 • London, UK</p>
-<p className="font-label-md text-label-md text-on-surface-variant">Active now</p>
+<p className="font-body-md text-body-md font-semibold text-on-surface">{session.deviceName ?? "Unknown device"}{session.ipAddress ? ` • ${session.ipAddress}` : ""}</p>
+<p className="font-label-md text-label-md text-on-surface-variant">{session.isCurrent ? "Active now" : `Signed in ${new Date(session.createdAt).toLocaleString()}`}</p>
 </div>
 </div>
-<span className="font-label-md text-label-md text-secondary font-semibold px-3 py-1 bg-secondary-fixed rounded-full">Current</span>
+{session.isCurrent ? <span className="font-label-md text-label-md text-secondary font-semibold px-3 py-1 bg-secondary-fixed rounded-full">Current</span> : <button onClick={() => terminateSession(session.id)} className="text-error hover:underline font-label-md text-label-md">Terminate</button>}
 </div>
-<div className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl opacity-70">
-<div className="flex items-center gap-3">
-<span className="material-symbols-outlined text-outline" data-icon="smartphone">smartphone</span>
-<div>
-<p className="font-body-md text-body-md font-semibold text-on-surface">iPhone 14 Pro • London, UK</p>
-<p className="font-label-md text-label-md text-on-surface-variant">Last active: 2 hours ago</p>
-</div>
-</div>
-<button className="text-error hover:underline font-label-md text-label-md">Terminate</button>
-</div>
+))}
 </div>
 </div>
 </div>
@@ -202,16 +263,17 @@ export default function StudentSettingsPage() {
 <span className="material-symbols-outlined text-tertiary bg-tertiary-fixed p-2 rounded-xl" data-icon="language">language</span>
 <h4 className="font-headline-sm text-headline-sm text-on-background">Regional</h4>
 </div>
+{savingSettings && <p className="mb-4 font-label-md text-primary">Saving preferences...</p>}
 <div className="space-y-6">
 <div className="space-y-2">
 <label className="font-label-md text-label-md text-on-surface-variant px-1">Display Language</label>
 <div className="relative">
-<select className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 appearance-none font-body-md text-body-md">
-<option>English (United Kingdom)</option>
-<option>English (United States)</option>
-<option>French (France)</option>
-<option>Spanish (Spain)</option>
-<option>German (Germany)</option>
+<select value={accountSettings.language} onChange={(e) => saveAccountSettings({ ...accountSettings, language: e.target.value as AccountSettings["language"] })} disabled={savingSettings} className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 appearance-none font-body-md text-body-md disabled:opacity-60">
+<option value="en-GB">English (United Kingdom)</option>
+<option value="en-US">English (United States)</option>
+<option value="fr-FR">French (France)</option>
+<option value="es-ES">Spanish (Spain)</option>
+<option value="de-DE">German (Germany)</option>
 </select>
 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline" data-icon="expand_more">expand_more</span>
 </div>
@@ -219,10 +281,10 @@ export default function StudentSettingsPage() {
 <div className="space-y-2">
 <label className="font-label-md text-label-md text-on-surface-variant px-1">Timezone</label>
 <div className="relative">
-<select className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 appearance-none font-body-md text-body-md">
-<option>(GMT+00:00) Greenwich Mean Time</option>
-<option>(GMT+01:00) Central European Time</option>
-<option>(GMT-05:00) Eastern Time</option>
+<select value={accountSettings.timezone} onChange={(e) => saveAccountSettings({ ...accountSettings, timezone: e.target.value as AccountSettings["timezone"] })} disabled={savingSettings} className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 appearance-none font-body-md text-body-md disabled:opacity-60">
+<option value="Etc/GMT">(GMT+00:00) Greenwich Mean Time</option>
+<option value="Europe/Paris">(GMT+01:00) Central European Time</option>
+<option value="America/New_York">(GMT-05:00) Eastern Time</option>
 </select>
 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline" data-icon="schedule">schedule</span>
 </div>
@@ -230,10 +292,10 @@ export default function StudentSettingsPage() {
 <div className="space-y-2">
 <label className="font-label-md text-label-md text-on-surface-variant px-1">Currency</label>
 <div className="relative">
-<select className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 appearance-none font-body-md text-body-md">
-<option>GBP (£)</option>
-<option>USD ($)</option>
-<option>EUR (€)</option>
+<select value={accountSettings.currency} onChange={(e) => saveAccountSettings({ ...accountSettings, currency: e.target.value as AccountSettings["currency"] })} disabled={savingSettings} className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 appearance-none font-body-md text-body-md disabled:opacity-60">
+<option value="GBP">GBP (£)</option>
+<option value="USD">USD ($)</option>
+<option value="EUR">EUR (€)</option>
 </select>
 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline" data-icon="payments">payments</span>
 </div>
@@ -291,21 +353,15 @@ export default function StudentSettingsPage() {
 <h5 className="font-body-lg text-body-lg font-bold mb-2">Display Mode</h5>
 <p className="font-label-md text-label-md opacity-80 mb-6">Choose how StudyBridge looks on your device.</p>
 <div className="grid grid-cols-2 gap-3">
-<button className="flex items-center justify-center gap-2 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10">
+<button onClick={() => saveAccountSettings({ ...accountSettings, displayMode: "light" })} disabled={savingSettings} aria-pressed={accountSettings.displayMode === "light"} className={`flex items-center justify-center gap-2 py-3 rounded-xl transition-all border disabled:opacity-60 ${accountSettings.displayMode === "light" ? "bg-white/25 border-white/40" : "bg-white/10 hover:bg-white/20 border-white/10"}`}>
 <span className="material-symbols-outlined text-[18px]" data-icon="light_mode">light_mode</span>
 <span className="font-label-md text-label-md font-semibold">Light</span>
 </button>
-<button className="flex items-center justify-center gap-2 py-3 bg-primary-container hover:bg-secondary-container rounded-xl transition-all border border-white/20">
+<button onClick={() => saveAccountSettings({ ...accountSettings, displayMode: "dark" })} disabled={savingSettings} aria-pressed={accountSettings.displayMode === "dark"} className={`flex items-center justify-center gap-2 py-3 rounded-xl transition-all border disabled:opacity-60 ${accountSettings.displayMode === "dark" ? "bg-secondary-container border-white/40" : "bg-primary-container hover:bg-secondary-container border-white/20"}`}>
 <span className="material-symbols-outlined text-[18px]" data-icon="dark_mode">dark_mode</span>
 <span className="font-label-md text-label-md font-semibold">Dark</span>
 </button>
 </div>
-</div>
-<div className="mt-8 pt-6 border-t border-white/10">
-<button className="w-full flex items-center justify-between text-primary-fixed-dim hover:text-white transition-all">
-<span className="font-body-md text-body-md font-semibold">Beta Feedback Program</span>
-<span className="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
-</button>
 </div>
 </div>
 </section>
@@ -319,8 +375,8 @@ export default function StudentSettingsPage() {
 <p className="font-label-md text-label-md text-on-error-container opacity-70">This will temporarily disable your account and hide your profile.</p>
 </div>
 </div>
-<button className="text-error border border-error/30 hover:bg-error hover:text-white px-6 py-2 rounded-xl font-label-md text-label-md font-semibold transition-all">
-                            Deactivate Account
+<button onClick={deactivateAccount} disabled={deactivating} className="text-error border border-error/30 hover:bg-error hover:text-white px-6 py-2 rounded-xl font-label-md text-label-md font-semibold transition-all disabled:opacity-50">
+                            {deactivating ? "Deactivating..." : "Deactivate Account"}
                         </button>
 </div>
 </section>

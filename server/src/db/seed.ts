@@ -44,6 +44,7 @@ async function main() {
       region: "Europe",
       city: "Oxford",
       ranking: 1,
+      coverImageUrl: "https://www.ox.ac.uk/sites/files/oxford/news_oxford_skyline_cairns.jpg",
       description: "One of the world's oldest and most prestigious research universities.",
       websiteUrl: "https://www.ox.ac.uk",
       isFeatured: true,
@@ -58,6 +59,7 @@ async function main() {
       region: "Asia-Pacific",
       city: "Singapore",
       ranking: 8,
+      coverImageUrl: "https://times-higher-education.shorthandstories.com/national-university-of-singapore-excellence-in-research-and-education/assets/33DRJduZOu/nus-podcast-series_shorthand_podcast-1-4096x2304.jpg",
       description: "Singapore's flagship university, known for innovation and research.",
       websiteUrl: "https://www.nus.edu.sg",
     })

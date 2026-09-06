@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { LocaleProvider } from "@/lib/locale-context";
 
 export const metadata: Metadata = {
   title: {
@@ -29,7 +30,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-surface text-on-surface">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><LocaleProvider>{children}</LocaleProvider></AuthProvider>
       </body>
     </html>
   );

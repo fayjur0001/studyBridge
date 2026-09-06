@@ -5,6 +5,7 @@ import Link from "next/link";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
+import { universityImage } from "@/lib/university-images";
 import { University, Scholarship } from "@/lib/types";
 
 interface SavedItem {
@@ -112,7 +113,7 @@ export default function SavedItemsPage() {
 {savedUniversities.map((u) => (
 <div key={u.id} className="bg-surface-container-lowest rounded-[24px] ambient-card overflow-hidden group">
 <div className="h-32 bg-primary relative">
-<div className="w-full h-full object-cover mix-blend-overlay opacity-60" style={{backgroundImage: `url('${u.coverImageUrl || ""}')`}}></div>
+<div className="w-full h-full bg-cover bg-center mix-blend-overlay opacity-60" style={{backgroundImage: `url('${universityImage(u.name, u.coverImageUrl, u.logoUrl)}')`}}></div>
 <div className="absolute top-4 right-4 flex gap-2">
 {u.ranking && <span className="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-xs font-bold shadow-sm">#{u.ranking} Global</span>}
 <button onClick={() => handleRemove("university", u.id)} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-error transition-colors flex items-center justify-center" title="Remove from saved">

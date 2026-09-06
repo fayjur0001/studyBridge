@@ -7,6 +7,7 @@ import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import { api } from "@/lib/api";
 import { ApplicationStatus, DocumentStatus } from "@/lib/types";
 import { ApplicationStatusBadge } from "@/components/applications/ApplicationStatusBadge";
+import { universityImage } from "@/lib/university-images";
 
 interface ApplicationDetail {
   id: string;
@@ -90,11 +91,7 @@ export default function ApplicationDetailPage() {
 </div>
 <div className="flex items-start gap-8">
 <div className="w-24 h-24 rounded-2xl bg-surface-container-low flex items-center justify-center border border-outline-variant/30">
-{app.university?.logoUrl ? (
-  <img className="w-16 h-16 object-contain" alt={app.university.name} src={app.university.logoUrl} />
-) : (
-  <span className="material-symbols-outlined text-primary text-3xl">school</span>
-)}
+{app.university && <img className="w-16 h-16 rounded-xl object-cover" alt={`${app.university.name} campus`} src={universityImage(app.university.name, null, app.university.logoUrl)} />}
 </div>
 <div className="flex-1">
 <h2 className="font-headline-lg text-headline-lg text-primary mb-1">{app.program?.name}</h2>

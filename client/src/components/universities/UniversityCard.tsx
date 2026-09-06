@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { University } from "@/lib/types";
-
-const FALLBACK_IMAGE =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDDi9gc6hDTfNh6XTMxsheKj6K4x5URTDUm4UCxjXQBPlr0aV_6xGA3KHOFUar-EI4yo5-TXaAj9PuEwWXvfAD3vZtJDsoQJ8ZEx3U4Z8cOxCV2tapJmvgVVjpOkJZBKLllgwxbxCuwQpcqMu4akjv5o_GEWk20I4Jn3cfF31tTnRSOdvWHKoiTvrLfxyfqRBdIhmlqLdpApkb0OWBkwPoETJ-ou8HSgYhpZutvmht9_r3w_zYzdE3a";
+import { universityImage } from "@/lib/university-images";
 
 export default function UniversityCard({ university }: { university: University }) {
   return (
@@ -11,7 +9,7 @@ export default function UniversityCard({ university }: { university: University 
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
         <div
           className="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500"
-          style={{ backgroundImage: `url('${university.coverImageUrl || FALLBACK_IMAGE}')` }}
+          style={{ backgroundImage: `url('${universityImage(university.name, university.coverImageUrl, university.logoUrl)}')` }}
         ></div>
         {university.ranking && (
           <div className="absolute top-4 right-4 z-20 bg-primary/90 text-white backdrop-blur-md px-3 py-1.5 rounded-full font-label-md flex items-center gap-1.5">

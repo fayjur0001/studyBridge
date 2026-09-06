@@ -15,6 +15,13 @@
       "when": 1788709557330,
       "tag": "0001_giant_the_professor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788711458955,
+      "tag": "0003_narrow_mesmero",
+      "breakpoints": true
     }
   ]
 }

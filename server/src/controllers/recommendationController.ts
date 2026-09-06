@@ -44,6 +44,7 @@ export async function getMyRecommendations(req: Request, res: Response) {
       country: universities.country,
       ranking: universities.ranking,
       logoUrl: universities.logoUrl,
+      coverImageUrl: universities.coverImageUrl,
     })
     .from(programs)
     .innerJoin(universities, eq(programs.universityId, universities.id));
