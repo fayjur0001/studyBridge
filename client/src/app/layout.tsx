@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { LocaleProvider } from "@/lib/locale-context";
@@ -18,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
@@ -31,13 +32,14 @@ export default function RootLayout({
         {/*
           Apply the saved theme before first paint so returning dark-mode
           visitors don't see a flash of the light theme on the public site.
-          Keep the storage key in sync with lib/theme.ts.
+          Keep the storage key in sync with lib/theme.ts. Uses next/script's
+          beforeInteractive strategy (instead of a raw <script> tag) so Next
+          runs it before hydration without React flagging it as a script
+          tag inside the render tree.
         */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem("sb-theme");if(m==="dark")document.documentElement.classList.add("dark");}catch(e){}})();`,
-          }}
-        />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`(function(){try{var m=localStorage.getItem("sb-theme");if(m==="dark")document.documentElement.classList.add("dark");}catch(e){}})();`}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col bg-surface text-on-surface">
         <AuthProvider><LocaleProvider>{children}</LocaleProvider></AuthProvider>

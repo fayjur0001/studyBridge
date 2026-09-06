@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/lib/auth-context";
 import { getCurrentTheme, setTheme, ThemeMode } from "@/lib/theme";
@@ -26,10 +26,16 @@ export default function PublicNavbar({
   const dashboardHref = user?.role === "student" ? "/student/dashboard" : user?.role === "agency" ? "/agency/dashboard" : "/admin/overview";
 
   // Public pages previously had no way to switch themes at all — dark mode
-  // only existed inside a logged-in dashboard's Settings page. Read whatever
-  // the inline anti-flash script (or a dashboard preference) already applied
-  // as the initial state, then let visitors flip it from here too.
-  const [mode, setMode] = useState<ThemeMode>(() => getCurrentTheme());
+  // only existed inside a logged-in dashboard's Settings page. The server
+  // always renders "light" (no access to localStorage), so the initial
+  // state here must match that exactly to avoid a hydration mismatch. Once
+  // mounted, sync to whatever the inline anti-flash script (or a dashboard
+  // preference) actually applied, then let visitors flip it from here too.
+  const [mode, setMode] = useState<ThemeMode>("light");
+
+  useEffect(() => {
+    setMode(getCurrentTheme());
+  }, []);
 
   function toggleTheme() {
     const next: ThemeMode = mode === "dark" ? "light" : "dark";
