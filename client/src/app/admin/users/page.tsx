@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AdminSidebar from "@/components/dashboard/AdminSidebar";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { Role } from "@/lib/types";
@@ -76,6 +77,7 @@ export default function AdminUsersPage() {
 </div>
 </div>
 <div className="flex items-center gap-4">
+<NotificationBell />
 <p className="font-headline-sm text-headline-sm font-semibold text-primary">{me?.fullName ?? "StudyBridge Admin"}</p>
 </div>
 </header>

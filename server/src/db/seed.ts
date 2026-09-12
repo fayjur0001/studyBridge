@@ -1,12 +1,23 @@
 import { db, pool } from "./index";
-import { users, studentProfiles, agencyProfiles, universities, programs, scholarships } from "./schema";
+import { users, studentProfiles, agencyProfiles, universities, programs, scholarships, applications, agencyStudents } from "./schema";
 import { hashPassword } from "@/utils/password";
 
 async function main() {
   console.log("Seeding database...");
 
+  // Clean up in reverse dependency order
+  await db.delete(applications);
+  await db.delete(agencyStudents);
+  await db.delete(studentProfiles);
+  await db.delete(agencyProfiles);
+  await db.delete(scholarships);
+  await db.delete(programs);
+  await db.delete(universities);
+  await db.delete(users);
+
   const passwordHash = await hashPassword("Password123!");
 
+  // Student
   const [student] = await db
     .insert(users)
     .values({ email: "student@example.com", passwordHash, fullName: "Amina Rahman", role: "student" })
@@ -16,26 +27,16 @@ async function main() {
     nationality: "Bangladeshi",
     currentEducationLevel: "Bachelor's",
     gpa: "3.80",
-    preferredCountries: ["UK", "Canada"],
+    preferredCountries: ["United Kingdom", "Canada"],
     preferredFields: ["Computer Science"],
   });
 
-  const [agency] = await db
-    .insert(users)
-    .values({ email: "agency@example.com", passwordHash, fullName: "Karim Hossain", role: "agency" })
-    .returning();
-  await db.insert(agencyProfiles).values({
-    userId: agency.id,
-    companyName: "Bridge Education Consultants",
-    licenseNumber: "BD-EDU-1029",
-    website: "https://bridge-edu.example.com",
-    isVerified: true,
-  });
-
+  // Admin
   await db
     .insert(users)
     .values({ email: "admin@example.com", passwordHash, fullName: "Platform Admin", role: "admin" });
 
+  // Universities
   const [oxford] = await db
     .insert(universities)
     .values({
@@ -65,6 +66,41 @@ async function main() {
     })
     .returning();
 
+  // Agency 1: Bridge Education Consultants (Specializes in UK, Singapore, Canada; Partner of Oxford)
+  const [agency1] = await db
+    .insert(users)
+    .values({ email: "agency@example.com", passwordHash, fullName: "Karim Hossain", role: "agency" })
+    .returning();
+  await db.insert(agencyProfiles).values({
+    userId: agency1.id,
+    companyName: "Bridge Education Consultants",
+    licenseNumber: "BD-EDU-1029",
+    website: "https://bridge-edu.example.com",
+    address: "House 42, Road 11, Banani, Dhaka, Bangladesh",
+    description: "Premier UK & European education advisory assisting students with direct admissions, visa guidance, and full scholarship assistance.",
+    supportedCountries: ["United Kingdom", "Singapore", "Canada"],
+    partnerUniversityIds: [oxford.id],
+    isVerified: true,
+  });
+
+  // Agency 2: Apex Global Education (Specializes in Singapore, Australia, USA; Partner of NUS)
+  const [agency2] = await db
+    .insert(users)
+    .values({ email: "agency2@example.com", passwordHash, fullName: "Farzana Chowdhury", role: "agency" })
+    .returning();
+  await db.insert(agencyProfiles).values({
+    userId: agency2.id,
+    companyName: "Apex Global Education",
+    licenseNumber: "BD-EDU-2045",
+    website: "https://apex-global.example.com",
+    address: "Gulshan-2, Dhaka, Bangladesh",
+    description: "Specialized in Asia-Pacific and North American university placements with comprehensive counseling.",
+    supportedCountries: ["Singapore", "Australia", "United States"],
+    partnerUniversityIds: [nus.id],
+    isVerified: true,
+  });
+
+  // Programs
   await db.insert(programs).values([
     {
       universityId: oxford.id,
@@ -88,6 +124,7 @@ async function main() {
     },
   ]);
 
+  // Scholarships
   await db.insert(scholarships).values([
     {
       universityId: oxford.id,
@@ -113,7 +150,7 @@ async function main() {
   ]);
 
   console.log("Seed complete. Demo accounts (password: Password123!):");
-  console.log("  student@example.com / agency@example.com / admin@example.com");
+  console.log("  student@example.com / agency@example.com / agency2@example.com / admin@example.com");
   await pool.end();
 }
 

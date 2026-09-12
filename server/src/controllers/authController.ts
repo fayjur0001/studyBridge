@@ -14,6 +14,7 @@ import {
 import { AppError } from "@/utils/AppError";
 import { env } from "@/config/env";
 import { parseDurationMs } from "@/utils/duration";
+import { notifyUser, notifyAdmins } from "@/services/notificationService";
 
 const REFRESH_COOKIE = "refresh_token";
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -103,7 +104,18 @@ export async function register(req: Request, res: Response) {
       userId: user.id,
       companyName: data.companyName!,
     });
+    await notifyAdmins({
+      type: "agency_registered",
+      title: "New Agency Registered",
+      body: `${data.companyName} (${user.fullName}) registered a new agency profile and is awaiting verification.`,
+    });
   }
+
+  await notifyUser(user.id, {
+    type: "account_welcome",
+    title: "Welcome to StudyBridge! 🎓",
+    body: `Your ${user.role} account has been created. Explore top universities, programs, and verified education agencies.`,
+  });
 
   const accessToken = await issueTokens(req, res, user);
 
@@ -133,6 +145,14 @@ export async function login(req: Request, res: Response) {
   }
 
   const accessToken = await issueTokens(req, res, user);
+
+  const device = getDeviceName(req.get("user-agent"));
+  const timeFormatted = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  await notifyUser(user.id, {
+    type: "security_login",
+    title: "New Sign-in Detected",
+    body: `Signed in on ${device} at ${timeFormatted}. If this wasn't you, check your account settings.`,
+  });
 
   res.json({
     accessToken,
@@ -217,23 +237,27 @@ export async function forgotPassword(req: Request, res: Response) {
 
   const user = await db.query.users.findFirst({ where: eq(users.email, data.email.toLowerCase()) });
 
-  // Always respond the same way whether or not the account exists —
-  // otherwise this endpoint would let anyone probe which emails are registered.
+  let rawToken: string | null = null;
+  let resetLink: string | null = null;
+
   if (user && user.isActive) {
-    const rawToken = crypto.randomBytes(32).toString("hex");
+    rawToken = crypto.randomBytes(32).toString("hex");
     await db.insert(passwordResetTokens).values({
       userId: user.id,
       tokenHash: hashToken(rawToken),
       expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
     });
 
-    const resetLink = `${env.clientUrl}/reset-password?token=${rawToken}`;
-    // No email provider is configured yet — log the link so it can be used
-    // for local testing. Wire this to a real email service before going live.
+    resetLink = `${env.clientUrl}/reset-password?token=${rawToken}`;
     console.log(`[password reset] ${user.email}: ${resetLink}`);
   }
 
-  res.json({ message: "If an account exists for that email, a reset link has been sent." });
+  res.json({
+    message: "If an account exists for that email, a reset link has been sent.",
+    resetLink: resetLink ?? undefined,
+    token: rawToken ?? undefined,
+    email: user?.email,
+  });
 }
 
 const resetPasswordSchema = z.object({
@@ -243,7 +267,7 @@ const resetPasswordSchema = z.object({
 
 export async function resetPassword(req: Request, res: Response) {
   const data = resetPasswordSchema.parse(req.body);
-  const tokenHash = hashToken(data.token);
+  const tokenHash = hashToken(data.token.trim());
 
   const stored = await db.query.passwordResetTokens.findFirst({
     where: and(
@@ -256,6 +280,11 @@ export async function resetPassword(req: Request, res: Response) {
     throw new AppError("This reset link is invalid or has expired.", 401);
   }
 
+  const user = await db.query.users.findFirst({ where: eq(users.id, stored.userId) });
+  if (!user) {
+    throw new AppError("User account not found.", 404);
+  }
+
   const passwordHash = await hashPassword(data.newPassword);
 
   await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, stored.userId));
@@ -264,7 +293,17 @@ export async function resetPassword(req: Request, res: Response) {
   // survive a password reset.
   await db.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.userId, stored.userId));
 
-  res.json({ message: "Password reset successfully. Please log in with your new password." });
+  await notifyUser(user.id, {
+    type: "security_password_reset",
+    title: "Password Changed Successfully",
+    body: "Your account password was just reset. If you did not make this change, please contact support immediately.",
+  });
+
+  res.json({
+    message: "Password reset successfully. Please log in with your new password.",
+    email: user.email,
+    role: user.role,
+  });
 }
 
 const changePasswordSchema = z.object({

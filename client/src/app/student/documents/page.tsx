@@ -5,6 +5,7 @@ import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, API_BASE_URL, getAccessToken, tryRefresh } from "@/lib/api";
 import { StudentDocument, DocumentStatus } from "@/lib/types";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const DOCUMENT_TYPES = [
   "Passport / ID",
@@ -126,6 +127,7 @@ export default function DocumentVaultPage() {
 </div>
 </div>
 <div className="flex items-center gap-6">
+<NotificationBell />
 <div className="flex items-center gap-3 group cursor-pointer">
 <div className="text-right hidden sm:block">
 <p className="font-label-md text-label-md font-bold text-on-surface">{user?.fullName ?? "..."}</p>

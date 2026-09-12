@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 const NAV_ITEMS = [
   { href: "/agency/dashboard", icon: "dashboard", label: "Dashboard" },
@@ -17,9 +18,16 @@ const SETTINGS_HREF = "/agency/settings";
 
 export default function AgencySidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
 
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
+
+  async function handleLogout() {
+    await logout();
+    router.push("/");
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[260px] bg-primary dark:bg-[#10172f] flex flex-col py-8 shadow-xl z-50 overflow-y-auto custom-scrollbar">
@@ -92,13 +100,14 @@ export default function AgencySidebar() {
           <span className="material-symbols-outlined">settings</span>
           <span className="font-label-md text-label-md">Settings</span>
         </Link>
-        <Link
-          href="/login"
-          className="flex items-center gap-4 text-primary-fixed-dim dark:text-[#bdc9ff] hover:text-surface-container-lowest dark:hover:text-white px-8 py-3 transition-colors hover:bg-primary-container/20 dark:hover:bg-white/10"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-4 text-primary-fixed-dim dark:text-[#bdc9ff] hover:text-surface-container-lowest dark:hover:text-white px-8 py-3 transition-colors hover:bg-primary-container/20 dark:hover:bg-white/10 w-full text-left cursor-pointer"
         >
           <span className="material-symbols-outlined">logout</span>
           <span className="font-label-md text-label-md">Logout</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );

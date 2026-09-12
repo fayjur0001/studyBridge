@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { agencyProfiles, users } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
+import { notifyUser } from "@/services/notificationService";
 
 export async function listAgencies(req: Request, res: Response) {
   const rows = await db
@@ -39,5 +40,14 @@ export async function setAgencyVerified(req: Request, res: Response) {
     .returning();
 
   if (!row) throw new AppError("Agency not found.", 404);
+
+  await notifyUser(req.params.id, {
+    type: "agency_verification",
+    title: data.isVerified ? "Agency Verified" : "Verification Status Updated",
+    body: data.isVerified
+      ? "Congratulations! Your agency has been officially verified by platform administrators."
+      : "Your agency verification status has been updated.",
+  });
+
   res.json(row);
 }

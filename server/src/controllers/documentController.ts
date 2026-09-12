@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { documents, applications, agencyStudents } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
 import { env } from "@/config/env";
+import { notifyUser, notifyUsers, getUserFullName } from "@/services/notificationService";
 
 export async function listMyDocuments(req: Request, res: Response) {
   const rows = await db
@@ -50,6 +51,29 @@ export async function uploadMyDocument(req: Request, res: Response) {
     })
     .returning();
 
+  await notifyUser(req.user!.id, {
+    type: "document_uploaded",
+    title: "Document Uploaded",
+    body: `Your document "${req.file.originalname}" was successfully uploaded.`,
+  });
+
+  const links = await db
+    .select({ agencyId: agencyStudents.agencyId })
+    .from(agencyStudents)
+    .where(eq(agencyStudents.studentId, req.user!.id));
+
+  if (links.length) {
+    const studentName = await getUserFullName(req.user!.id);
+    await notifyUsers(
+      links.map((l) => l.agencyId),
+      {
+        type: "student_document_uploaded",
+        title: "New Student Document",
+        body: `${studentName} uploaded a new ${data.type} document (${req.file.originalname}).`,
+      }
+    );
+  }
+
   res.status(201).json(row);
 }
 
@@ -76,9 +100,25 @@ export async function deleteMyDocument(req: Request, res: Response) {
 // than exposing the student's vault through a guessable static upload URL.
 export async function viewMyDocument(req: Request, res: Response) {
   const doc = await db.query.documents.findFirst({
-    where: and(eq(documents.id, req.params.id), eq(documents.studentId, req.user!.id)),
+    where: eq(documents.id, req.params.id),
   });
   if (!doc) throw new AppError("Document not found.", 404);
+
+  if (req.user!.role === "student") {
+    if (doc.studentId !== req.user!.id) {
+      throw new AppError("You do not have permission to view this document.", 403);
+    }
+  } else if (req.user!.role === "agency") {
+    const linked = await db.query.agencyStudents.findFirst({
+      where: and(
+        eq(agencyStudents.agencyId, req.user!.id),
+        eq(agencyStudents.studentId, doc.studentId)
+      ),
+    });
+    if (!linked) {
+      throw new AppError("This student is not assigned to your agency.", 403);
+    }
+  }
 
   const uploadRoot = path.resolve(env.uploadDir);
   const fullPath = path.resolve(uploadRoot, doc.filePath);
@@ -127,6 +167,12 @@ export async function reviewDocument(req: Request, res: Response) {
     })
     .where(eq(documents.id, req.params.id))
     .returning();
+
+  await notifyUser(doc.studentId, {
+    type: "document_reviewed",
+    title: `Document ${data.status.toUpperCase()}`,
+    body: `Your document "${doc.fileName}" (${doc.type}) was marked as ${data.status}.${data.reviewNote ? ` Note: ${data.reviewNote}` : ""}`,
+  });
 
   res.json(row);
 }

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { Application, Program, StudentDocument } from "@/lib/types";
 import { useLocale } from "@/lib/locale-context";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 interface ApplicationStats {
   total: number;
@@ -92,8 +93,8 @@ export default function StudentDashboardPage() {
 </div>
 </div>
 <div className="flex items-center gap-6">
-<div className="flex items-center gap-1 text-on-surface-variant">
-<Link href="/student/settings#notifications" title="Notification settings" aria-label="Notification settings" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">notifications</span></Link>
+<div className="flex items-center gap-2 text-on-surface-variant">
+<NotificationBell />
 <Link href="/student/ai-tools/documentation" title="Help and documentation" aria-label="Help and documentation" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">help_outline</span></Link>
 </div>
 <div className="flex items-center gap-3 cursor-pointer group">

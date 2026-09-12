@@ -84,6 +84,8 @@ export const agencyProfiles = pgTable("agency_profiles", {
   description: text("description"),
   studentStories: text("student_stories"),
   isVerified: boolean("is_verified").notNull().default(false),
+  supportedCountries: jsonb("supported_countries").$type<string[]>().default([]),
+  partnerUniversityIds: jsonb("partner_university_ids").$type<string[]>().default([]),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -453,5 +455,6 @@ export const programsRelations = relations(programs, ({ one, many }) => ({
 export const applicationsRelations = relations(applications, ({ one, many }) => ({
   student: one(users, { fields: [applications.studentId], references: [users.id] }),
   program: one(programs, { fields: [applications.programId], references: [programs.id] }),
+  agency: one(users, { fields: [applications.agencyId], references: [users.id] }),
   documents: many(documents),
 }));

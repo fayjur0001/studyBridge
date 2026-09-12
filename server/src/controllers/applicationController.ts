@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { and, desc, eq, notInArray } from "drizzle-orm";
 import { db } from "@/db";
-import { applications, programs, universities, documents } from "@/db/schema";
+import { applications, programs, universities, documents, users, agencyProfiles, agencyStudents } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
+import { notifyUser, notifyAdmins, getUserFullName } from "@/services/notificationService";
 
 export async function listMyApplications(req: Request, res: Response) {
   const rows = await db
@@ -12,6 +13,7 @@ export async function listMyApplications(req: Request, res: Response) {
       status: applications.status,
       intake: applications.intake,
       notes: applications.notes,
+      agencyId: applications.agencyId,
       submittedAt: applications.submittedAt,
       decidedAt: applications.decidedAt,
       createdAt: applications.createdAt,
@@ -69,11 +71,32 @@ export async function getMyApplication(req: Request, res: Response) {
     ? await db.query.universities.findFirst({ where: eq(universities.id, program.universityId) })
     : null;
 
-  res.json({ ...application, program, university, documents: applicationDocuments });
+  let agency = null;
+  if (application.agencyId) {
+    const [agencyRow] = await db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        email: users.email,
+        phone: users.phone,
+        avatarUrl: users.avatarUrl,
+        companyName: agencyProfiles.companyName,
+        website: agencyProfiles.website,
+        address: agencyProfiles.address,
+        isVerified: agencyProfiles.isVerified,
+      })
+      .from(users)
+      .innerJoin(agencyProfiles, eq(users.id, agencyProfiles.userId))
+      .where(eq(users.id, application.agencyId));
+    agency = agencyRow ?? null;
+  }
+
+  res.json({ ...application, program, university, agency, documents: applicationDocuments });
 }
 
 const createApplicationSchema = z.object({
   programId: z.string().uuid(),
+  agencyId: z.string().uuid().optional(),
   intake: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -97,8 +120,44 @@ export async function createMyApplication(req: Request, res: Response) {
 
   const [row] = await db
     .insert(applications)
-    .values({ studentId: req.user!.id, programId: data.programId, intake: data.intake, notes: data.notes })
+    .values({
+      studentId: req.user!.id,
+      programId: data.programId,
+      agencyId: data.agencyId ?? null,
+      intake: data.intake,
+      notes: data.notes,
+    })
     .returning();
+
+  const studentName = await getUserFullName(req.user!.id);
+
+  if (data.agencyId) {
+    await db
+      .insert(agencyStudents)
+      .values({
+        agencyId: data.agencyId,
+        studentId: req.user!.id,
+      })
+      .onConflictDoNothing();
+
+    await notifyUser(data.agencyId, {
+      type: "application_assigned",
+      title: "New Student Application Assigned",
+      body: `${studentName} started an application for ${program.name} and selected your agency.`,
+    });
+  }
+
+  await notifyUser(req.user!.id, {
+    type: "application_started",
+    title: "Application Started",
+    body: `You successfully started an application for ${program.name}.`,
+  });
+
+  await notifyAdmins({
+    type: "application_created",
+    title: "New Application Started",
+    body: `${studentName} created an application for ${program.name}.`,
+  });
 
   res.status(201).json(row);
 }
@@ -142,6 +201,28 @@ export async function submitMyApplication(req: Request, res: Response) {
     .set({ status: "submitted", submittedAt: new Date(), updatedAt: new Date() })
     .where(eq(applications.id, req.params.id))
     .returning();
+
+  const studentName = await getUserFullName(req.user!.id);
+
+  await notifyUser(req.user!.id, {
+    type: "application_submitted",
+    title: "Application Formally Submitted",
+    body: "Your application has been submitted and is ready for review.",
+  });
+
+  if (row.agencyId) {
+    await notifyUser(row.agencyId, {
+      type: "application_submitted",
+      title: "Student Submitted Application",
+      body: `${studentName} has officially submitted their application.`,
+    });
+  }
+
+  await notifyAdmins({
+    type: "application_submitted",
+    title: "Application Formally Submitted",
+    body: `${studentName} officially submitted an application.`,
+  });
 
   res.json(row);
 }

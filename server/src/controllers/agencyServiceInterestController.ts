@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { agencyServiceInterests, agencyServices, notifications, users } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
+import { notifyAdmins, notifyUser } from "@/services/notificationService";
 
 export async function requestAgencyService(req: Request, res: Response) {
   const service = await db.query.agencyServices.findFirst({ where: and(eq(agencyServices.id, req.params.serviceId), eq(agencyServices.isActive, true)) });
@@ -10,7 +11,22 @@ export async function requestAgencyService(req: Request, res: Response) {
   const [interest] = await db.insert(agencyServiceInterests).values({ agencyId: service.agencyId, serviceId: service.id, studentId: req.user!.id }).onConflictDoNothing().returning();
   if (interest) {
     const student = await db.query.users.findFirst({ where: eq(users.id, req.user!.id) });
-    await db.insert(notifications).values({ userId: service.agencyId, type: "service_interest", title: "New program request", body: `${student?.fullName ?? "A student"} wants to join ${service.name}.` });
+    const studentName = student?.fullName ?? "A student";
+    await notifyUser(service.agencyId, {
+      type: "service_interest",
+      title: "New Program Request",
+      body: `${studentName} wants to join ${service.name}.`,
+    });
+    await notifyUser(req.user!.id, {
+      type: "service_interest",
+      title: "Program Request Submitted",
+      body: `Your request to join ${service.name} has been sent to the agency.`,
+    });
+    await notifyAdmins({
+      type: "service_interest",
+      title: "Student Program Request",
+      body: `${studentName} requested to join ${service.name}.`,
+    });
   }
   res.status(interest ? 201 : 200).json({ requested: true, alreadyRequested: !interest });
 }

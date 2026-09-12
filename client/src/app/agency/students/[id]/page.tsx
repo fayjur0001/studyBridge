@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AgencySidebar from "@/components/dashboard/AgencySidebar";
-import { api } from "@/lib/api";
+import { api, API_BASE_URL, getAccessToken, tryRefresh } from "@/lib/api";
 import { ApplicationStatus, DocumentStatus } from "@/lib/types";
 import { ApplicationStatusBadge } from "@/components/applications/ApplicationStatusBadge";
 
@@ -45,6 +45,7 @@ export default function AgencyStudentDetailPage() {
   const [messaging, setMessaging] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [docLoadingId, setDocLoadingId] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -55,6 +56,49 @@ export default function AgencyStudentDetailPage() {
   }
 
   useEffect(load, [studentId]);
+
+  async function openDocument(doc: { id: string; fileName: string }, download = false) {
+    setDocLoadingId(doc.id);
+    const previewWindow = download ? null : window.open("", "_blank");
+    try {
+      let token = getAccessToken();
+      let response = await fetch(
+        `${API_BASE_URL}/api/documents/${doc.id}/file${download ? "?download=true" : ""}`,
+        {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
+      if (response.status === 401 && (await tryRefresh())) {
+        token = getAccessToken();
+        response = await fetch(
+          `${API_BASE_URL}/api/documents/${doc.id}/file${download ? "?download=true" : ""}`,
+          {
+            credentials: "include",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
+      }
+      if (!response.ok) throw new Error("Could not open this document.");
+      const url = URL.createObjectURL(await response.blob());
+      if (download) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = doc.fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        if (previewWindow) previewWindow.location.href = url;
+        else window.open(url, "_blank", "noopener,noreferrer");
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    } catch {
+      previewWindow?.close();
+      alert("Could not open or download this document.");
+    } finally {
+      setDocLoadingId(null);
+    }
+  }
 
   async function handleReviewDocument(documentId: string, status: "approved" | "rejected") {
     setReviewingId(documentId);
@@ -183,36 +227,56 @@ export default function AgencyStudentDetailPage() {
 <div className="mt-4 pt-4 border-t border-outline-variant/30 space-y-2">
 <p className="text-label-md text-outline uppercase tracking-wider mb-2">Documents</p>
 {app.documents.map((doc) => (
-<div key={doc.id} className="flex items-center justify-between bg-surface-container-lowest rounded-lg px-4 py-3">
-<div className="flex items-center gap-3">
-<span className="material-symbols-outlined text-outline text-[20px]">description</span>
-<div>
-<p className="font-semibold text-on-surface text-body-md">{doc.type}</p>
-<p className="text-label-md text-outline">{doc.fileName}</p>
+<div key={doc.id} className="flex items-center justify-between bg-surface-container-lowest rounded-lg px-4 py-3 gap-3">
+<div className="flex items-center gap-3 min-w-0">
+<span className="material-symbols-outlined text-outline text-[20px] shrink-0">description</span>
+<div className="min-w-0">
+<p className="font-semibold text-on-surface text-body-md truncate">{doc.type}</p>
+<p className="text-label-md text-outline truncate">{doc.fileName}</p>
 </div>
 </div>
+<div className="flex items-center gap-2 shrink-0">
+<button
+  type="button"
+  onClick={() => openDocument(doc, false)}
+  disabled={docLoadingId === doc.id}
+  className="p-1.5 hover:bg-primary/10 rounded-lg text-primary transition-colors cursor-pointer"
+  title="Preview document"
+>
+  <span className="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button
+  type="button"
+  onClick={() => openDocument(doc, true)}
+  disabled={docLoadingId === doc.id}
+  className="p-1.5 hover:bg-primary/10 rounded-lg text-primary transition-colors cursor-pointer"
+  title="Download document"
+>
+  <span className="material-symbols-outlined text-[18px]">download</span>
+</button>
 {doc.status === "pending" ? (
-<div className="flex items-center gap-2">
+<div className="flex items-center gap-1.5">
 <button
   onClick={() => handleReviewDocument(doc.id, "approved")}
   disabled={reviewingId === doc.id}
-  className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-label-md font-bold disabled:opacity-50"
+  className="px-3 py-1 rounded-lg bg-primary text-on-primary text-xs font-bold disabled:opacity-50 cursor-pointer"
 >
   Approve
 </button>
 <button
   onClick={() => handleReviewDocument(doc.id, "rejected")}
   disabled={reviewingId === doc.id}
-  className="px-3 py-1.5 rounded-lg bg-surface-container text-error text-label-md font-bold disabled:opacity-50"
+  className="px-3 py-1 rounded-lg bg-surface-container text-error text-xs font-bold disabled:opacity-50 cursor-pointer"
 >
   Reject
 </button>
 </div>
 ) : (
-<span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase ${doc.status === "approved" ? "bg-secondary-fixed text-on-secondary-fixed-variant" : "bg-error-container text-on-error-container"}`}>
+<span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${doc.status === "approved" ? "bg-secondary-fixed text-on-secondary-fixed-variant" : "bg-error-container text-on-error-container"}`}>
 {doc.status}
 </span>
 )}
+</div>
 </div>
 ))}
 </div>

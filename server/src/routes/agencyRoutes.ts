@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { requireAuth, requireRole } from "@/middleware/auth";
-import { getMyAgencyProfile, updateMyAgencyProfile, getAgencyPublicProfile, listAgencies } from "@/controllers/agencyProfileController";
+import { getMyAgencyProfile, updateMyAgencyProfile, getAgencyPublicProfile, listAgencies, getSuggestedAgencies } from "@/controllers/agencyProfileController";
 import { deleteMyAgencyFile, listMyAgencyFiles, uploadAgencyFile, uploadMyAgencyAvatar, viewAgencyAvatar, viewAgencyFile } from "@/controllers/agencyFileController";
 import { uploadDocument } from "@/middleware/upload";
 import {
@@ -36,6 +36,7 @@ const router = Router();
 // Students (and prospective students) can browse agency details before the
 // agency-only middleware is applied below.
 router.get("/directory", asyncHandler(listAgencies));
+router.get("/suggested", asyncHandler(getSuggestedAgencies));
 router.get("/:id/public", asyncHandler(getAgencyPublicProfile));
 router.get("/:id/avatar", asyncHandler(viewAgencyAvatar));
 router.get("/files/:id/file", asyncHandler(viewAgencyFile));
@@ -75,6 +76,6 @@ router.get("/students/:id", asyncHandler(getMyStudent));
 router.delete("/students/:id", asyncHandler(unlinkStudent));
 
 router.get("/applications", asyncHandler(listAgencyApplications));
-router.patch("/applications/:id/status", asyncHandler(updateAgencyApplicationStatus));
+router.patch("/applications/:id/status", uploadDocument.single("file"), asyncHandler(updateAgencyApplicationStatus));
 
 export default router;

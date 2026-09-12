@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { University, Program } from "@/lib/types";
 import { universityImage } from "@/lib/university-images";
+import { ApplyModal } from "@/components/applications/ApplyModal";
 
 interface UniversityDetail extends University {
   programs: Program[];
@@ -25,6 +26,9 @@ export default function UniversityDetailPage() {
   const [applyError, setApplyError] = useState<string | null>(null);
   const [appliedProgramIds, setAppliedProgramIds] = useState<Set<string>>(new Set());
 
+  const [selectedProgramForApply, setSelectedProgramForApply] = useState<Program | null>(null);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+
   useEffect(() => {
     api.get<UniversityDetail>(`/api/universities/${id}`, { auth: false }).then(setUniversity);
   }, [id]);
@@ -39,7 +43,7 @@ export default function UniversityDetailPage() {
     }
   }
 
-  async function handleApply(programId: string) {
+  function handleApply(program: Program) {
     setApplyError(null);
 
     if (!user) {
@@ -51,15 +55,29 @@ export default function UniversityDetailPage() {
       return;
     }
 
+    setSelectedProgramForApply(program);
+    setIsApplyModalOpen(true);
+  }
+
+  async function handleConfirmApply(agencyId: string | null) {
+    if (!selectedProgramForApply) return;
+    setApplyError(null);
+    const programId = selectedProgramForApply.id;
     setApplyingId(programId);
+
     try {
-      const application = await api.post<{ id: string }>("/api/applications", { programId });
+      const application = await api.post<{ id: string }>("/api/applications", {
+        programId,
+        agencyId: agencyId || undefined,
+      });
       setAppliedProgramIds((prev) => new Set(prev).add(programId));
+      setIsApplyModalOpen(false);
       router.push(`/student/applications/${application.id}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setAppliedProgramIds((prev) => new Set(prev).add(programId));
         setApplyError("You already have an active application for this program.");
+        setIsApplyModalOpen(false);
       } else if (err instanceof ApiError) {
         setApplyError(err.message);
       } else {
@@ -145,7 +163,7 @@ export default function UniversityDetailPage() {
 {p.tuitionFeeUsd && <span className="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm">${Number(p.tuitionFeeUsd).toLocaleString()}/yr</span>}
 </div>
 <button
-  onClick={() => handleApply(p.id)}
+  onClick={() => handleApply(p)}
   disabled={applyingId === p.id || appliedProgramIds.has(p.id)}
   className="mt-6 w-full py-3 bg-primary text-on-primary rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-60"
 >
@@ -257,6 +275,17 @@ export default function UniversityDetailPage() {
 </main>
 
 <PublicFooter />
+
+{selectedProgramForApply && university && (
+  <ApplyModal
+    isOpen={isApplyModalOpen}
+    onClose={() => setIsApplyModalOpen(false)}
+    program={selectedProgramForApply}
+    university={university}
+    onConfirm={handleConfirmApply}
+    loading={applyingId === selectedProgramForApply.id}
+  />
+)}
     </>
   );
 }

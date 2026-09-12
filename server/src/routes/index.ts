@@ -10,6 +10,7 @@ import savedItemRoutes from "./savedItemRoutes";
 import agencyRoutes from "./agencyRoutes";
 import adminRoutes from "./adminRoutes";
 import messageRoutes from "./messageRoutes";
+import notificationRoutes from "./notificationRoutes";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use("/saved-items", savedItemRoutes);
 router.use("/agency", agencyRoutes);
 router.use("/admin", adminRoutes);
 router.use("/conversations", messageRoutes);
+router.use("/notifications", notificationRoutes);
 
 // Phase 7: wire the frontend to this API.
 

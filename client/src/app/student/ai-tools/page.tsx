@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { useAuth } from "@/lib/auth-context";
 import { useLocale } from "@/lib/locale-context";
 
@@ -26,8 +27,8 @@ export default function AIToolsHubPage() {
 </div>
 </div>
 <div className="flex items-center gap-6">
-<div className="flex items-center gap-1 text-on-surface-variant">
-<Link href="/student/settings#notifications" title="Notification settings" aria-label="Notification settings" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">notifications</span></Link>
+<div className="flex items-center gap-2 text-on-surface-variant">
+<NotificationBell />
 <Link href="/student/ai-tools/documentation" title="Help and documentation" aria-label="Help and documentation" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">help_outline</span></Link>
 </div>
 <div className="flex items-center gap-3 cursor-pointer group">

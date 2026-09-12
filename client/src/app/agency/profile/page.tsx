@@ -19,6 +19,7 @@ interface AgencyProfileData {
     address: string | null;
     description: string | null;
     studentStories: string | null;
+    supportedCountries?: string[] | null;
     isVerified: boolean;
   } | null;
 }
@@ -36,6 +37,8 @@ export default function AgencyProfilePage() {
   const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [studentStories, setStudentStories] = useState("");
+  const [supportedCountries, setSupportedCountries] = useState<string[]>([]);
+  const [countryInput, setCountryInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>("general");
   const [team, setTeam] = useState<TeamMember[]>([]);
@@ -56,6 +59,7 @@ export default function AgencyProfilePage() {
       setAddress(res.agencyProfile?.address ?? "");
       setDescription(res.agencyProfile?.description ?? "");
       setStudentStories(res.agencyProfile?.studentStories ?? "");
+      setSupportedCountries(res.agencyProfile?.supportedCountries ?? []);
     });
   }
 
@@ -100,7 +104,7 @@ export default function AgencyProfilePage() {
   async function handleSave() {
     setSaving(true);
     try {
-      await api.patch("/api/agency/me", { agency: { companyName, website, address, description, studentStories } });
+      await api.patch("/api/agency/me", { agency: { companyName, website, address, description, studentStories, supportedCountries } });
       setEditing(false);
       load();
     } finally {
@@ -222,6 +226,55 @@ export default function AgencyProfilePage() {
 <textarea className="w-full bg-surface-container-low border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20 resize-none" rows={5} value={studentStories} onChange={(e) => setStudentStories(e.target.value)} placeholder="Share successful student journeys, outcomes, testimonials, or support experience. This will appear to students on your public profile." />
 <p className="text-xs text-on-surface-variant">Students can view this from your agency profile.</p>
 </div>
+<div className="space-y-2 md:col-span-2">
+<label className="text-label-md text-on-surface-variant font-medium">Specialized / Supported Countries</label>
+<div className="flex gap-2 flex-wrap mb-2">
+{supportedCountries.map((c) => (
+  <span key={c} className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary font-medium text-xs rounded-full">
+    {c}
+    <button
+      type="button"
+      onClick={() => setSupportedCountries(prev => prev.filter(x => x !== c))}
+      className="hover:text-error transition-colors font-bold ml-1 text-sm"
+    >
+      ×
+    </button>
+  </span>
+))}
+</div>
+<div className="flex gap-2">
+<input
+  className="flex-1 bg-surface-container-low border-none rounded-xl py-2.5 px-4 focus:ring-2 focus:ring-primary/20 text-sm"
+  placeholder="Add destination country (e.g. United Kingdom, Singapore, Canada)..."
+  value={countryInput}
+  onChange={(e) => setCountryInput(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = countryInput.trim();
+      if (val && !supportedCountries.includes(val)) {
+        setSupportedCountries(prev => [...prev, val]);
+        setCountryInput("");
+      }
+    }
+  }}
+/>
+<button
+  type="button"
+  onClick={() => {
+    const val = countryInput.trim();
+    if (val && !supportedCountries.includes(val)) {
+      setSupportedCountries(prev => [...prev, val]);
+      setCountryInput("");
+    }
+  }}
+  className="px-4 py-2 bg-surface-container-high rounded-xl text-sm font-semibold hover:bg-primary hover:text-on-primary transition-colors"
+>
+  Add Country
+</button>
+</div>
+<p className="text-xs text-outline">Students will be recommended your agency when applying to universities located in these countries.</p>
+</div>
 </div>
 <button onClick={handleSave} disabled={saving} className="bg-primary text-on-primary px-8 py-2.5 rounded-xl font-bold disabled:opacity-50">
   {saving ? "Saving..." : "Save Changes"}
@@ -328,6 +381,26 @@ export default function AgencyProfilePage() {
 </div>
 {/* Right Column: Business Certifications & Quick Links */}
 <div className="col-span-12 lg:col-span-4 space-y-card-gap">
+{/* Supported Destinations Card */}
+<div className="ambient-card bg-surface-container-lowest rounded-[24px] p-container-padding">
+<h3 className="font-headline-sm text-headline-sm text-on-surface mb-3 flex items-center gap-2">
+  <span className="material-symbols-outlined text-primary">public</span>
+  Study Destinations
+</h3>
+<p className="text-xs text-on-surface-variant mb-4">Countries where your agency actively places students:</p>
+{supportedCountries.length === 0 ? (
+  <p className="text-sm text-outline italic">No countries configured yet. Click &quot;Edit Profile&quot; to add your destination countries.</p>
+) : (
+  <div className="flex flex-wrap gap-2">
+    {supportedCountries.map((c) => (
+      <span key={c} className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-container/20 text-secondary border border-secondary/20 font-medium text-xs rounded-full">
+        <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+        {c}
+      </span>
+    ))}
+  </div>
+)}
+</div>
 {/* Business Profile Strength */}
 <div className="ambient-card bg-primary dark:bg-on-tertiary-fixed rounded-[24px] p-container-padding text-on-primary">
 <h3 className="font-headline-sm text-headline-sm mb-6">Profile Strength</h3>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminSidebar from "@/components/dashboard/AdminSidebar";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { api } from "@/lib/api";
 
 type ReportRow = {
@@ -119,7 +120,8 @@ export default function AdminReportsPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <NotificationBell />
           <span className="font-label-md text-label-md font-semibold text-primary">StudyBridge Admin</span>
         </div>
       </header>

@@ -10,19 +10,25 @@ import { api, ApiError } from "@/lib/api";
 export default function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const urlToken = searchParams.get("token") || "";
+
+  const [inputToken, setInputToken] = useState(urlToken);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetRole, setResetRole] = useState("student");
+
+  const effectiveToken = (urlToken || inputToken).trim();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!token) {
-      setError("This reset link is missing or invalid. Please request a new one.");
+    if (!effectiveToken) {
+      setError("Please provide your reset token or request a new reset link.");
       return;
     }
     if (password.length < 8) {
@@ -36,9 +42,21 @@ export default function ResetPasswordForm() {
 
     setLoading(true);
     try {
-      await api.post("/api/auth/reset-password", { token, newPassword: password }, { auth: false });
+      const res = await api.post<{ message: string; email?: string; role?: string }>(
+        "/api/auth/reset-password",
+        { token: effectiveToken, newPassword: password },
+        { auth: false }
+      );
+      setResetEmail(res.email || "");
+      setResetRole(res.role || "student");
       setDone(true);
-      setTimeout(() => router.push("/login"), 1800);
+      setTimeout(() => {
+        router.push(
+          `/login?email=${encodeURIComponent(res.email || "")}&role=${encodeURIComponent(
+            res.role || "student"
+          )}&reset=success`
+        );
+      }, 2000);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -49,25 +67,27 @@ export default function ResetPasswordForm() {
   if (done) {
     return (
       <div className="text-center">
-        <div className="w-16 h-16 rounded-full bg-primary-container/40 flex items-center justify-center mx-auto mb-6">
+        <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-sm">
           <span
-            className="material-symbols-outlined text-primary text-3xl"
+            className="material-symbols-outlined text-3xl"
             style={{ fontVariationSettings: "'FILL' 1" }}
           >
             check_circle
           </span>
         </div>
         <h1 className="font-headline-lg text-headline-lg text-on-surface mb-2">
-          Password updated
+          Password Updated 🎉
         </h1>
         <p className="font-body-md text-body-md text-on-surface-variant mb-6">
-          Your password has been reset successfully. Taking you to sign in...
+          Your password has been reset successfully. Redirecting you to sign in with your new password...
         </p>
         <Link
-          href="/login"
-          className="text-primary font-bold hover:underline font-label-md text-label-md"
+          href={`/login?email=${encodeURIComponent(resetEmail)}&role=${encodeURIComponent(
+            resetRole
+          )}&reset=success`}
+          className="w-full py-3 px-6 rounded-xl bg-primary text-on-primary font-bold text-sm shadow-md hover:opacity-90 transition-all inline-flex items-center justify-center gap-1.5"
         >
-          Go to sign in now →
+          Go to Sign In Now →
         </Link>
       </div>
     );
@@ -91,11 +111,39 @@ export default function ResetPasswordForm() {
           Set a new password
         </h1>
         <p className="font-body-md text-body-md text-on-surface-variant">
-          Choose a strong password you haven&apos;t used before.
+          Enter your new password below. You will use this new password to sign in to your account.
         </p>
       </div>
 
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        {/* Token Input if not in URL */}
+        {!urlToken ? (
+          <div>
+            <Input
+              id="token"
+              name="token"
+              type="text"
+              label="Reset Code / Token"
+              icon="key"
+              placeholder="Paste your 64-character token"
+              value={inputToken}
+              onChange={(e) => setInputToken(e.target.value)}
+              required
+            />
+            <p className="text-[11px] text-outline mt-1 px-1">
+              Don&apos;t have a token?{" "}
+              <Link href="/forgot-password" className="text-primary font-bold hover:underline">
+                Request a reset link
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300">
+            <span className="material-symbols-outlined text-emerald-600 text-[18px]">verified</span>
+            <span className="font-medium">Reset token successfully verified from link</span>
+          </div>
+        )}
+
         <Input
           id="password"
           name="password"
@@ -127,7 +175,7 @@ export default function ResetPasswordForm() {
         )}
 
         <Button type="submit" className="w-full mt-2" disabled={loading}>
-          {loading ? "Updating..." : "Reset password"}
+          {loading ? "Updating password..." : "Reset password & continue"}
         </Button>
       </form>
 

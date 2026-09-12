@@ -21,7 +21,7 @@ router.post(
   asyncHandler(uploadMyDocument)
 );
 router.delete("/:id", requireAuth, requireRole("student"), asyncHandler(deleteMyDocument));
-router.get("/:id/file", requireAuth, requireRole("student"), asyncHandler(viewMyDocument));
+router.get("/:id/file", requireAuth, requireRole("student", "agency", "admin"), asyncHandler(viewMyDocument));
 
 router.patch(
   "/:id/review",

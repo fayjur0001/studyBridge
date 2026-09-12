@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { Application } from "@/lib/types";
 import { ApplicationStatusBadge, applicationNextStep } from "@/components/applications/ApplicationStatusBadge";
 import { universityImage } from "@/lib/university-images";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 interface ApplicationStats {
   total: number;
@@ -53,7 +54,7 @@ export default function ApplicationsPage() {
 </div>
 <div className="flex items-center gap-6">
 <div className="flex items-center gap-4 text-on-surface-variant">
-<button className="material-symbols-outlined cursor-pointer transition-transform duration-200 active:scale-95 hover:text-primary" data-icon="notifications">notifications</button>
+<NotificationBell />
 </div>
 <div className="h-8 w-[1px] bg-outline-variant"></div>
 <div className="flex items-center gap-3 cursor-pointer group">

@@ -26,7 +26,7 @@ export default function AdminSidebar() {
 
   async function handleLogout() {
     await logout();
-    router.push("/login");
+    router.push("/");
   }
 
   return (
@@ -72,7 +72,7 @@ export default function AdminSidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="text-on-primary/80 dark:text-[#bdc9ff] px-8 py-3 flex items-center gap-3 hover:bg-primary-container/20 dark:hover:bg-white/10 hover:text-on-primary dark:hover:text-white transition-colors text-left"
+          className="text-on-primary/80 dark:text-[#bdc9ff] px-8 py-3 flex items-center gap-3 hover:bg-primary-container/20 dark:hover:bg-white/10 hover:text-on-primary dark:hover:text-white transition-colors text-left cursor-pointer w-full"
         >
           <span className="material-symbols-outlined">logout</span>
           <span className="font-label-md text-label-md">Logout</span>

@@ -9,6 +9,7 @@ import {
   users,
 } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
+import { notifyUser, notifyUsers, getUserFullName } from "@/services/notificationService";
 
 async function assertParticipant(conversationId: string, userId: string) {
   const row = await db.query.conversationParticipants.findFirst({
@@ -148,6 +149,14 @@ export async function startConversation(req: Request, res: Response) {
       )
     );
 
+  const senderName = await getUserFullName(req.user!.id);
+
+  await notifyUser(data.recipientId, {
+    type: "new_message",
+    title: `New Message from ${senderName}`,
+    body: data.message.length > 100 ? `${data.message.slice(0, 100)}...` : data.message,
+  });
+
   res.status(201).json({ conversation, message });
 }
 
@@ -200,6 +209,28 @@ export async function sendMessage(req: Request, res: Response) {
         eq(conversationParticipants.userId, req.user!.id)
       )
     );
+
+  const others = await db
+    .select({ userId: conversationParticipants.userId })
+    .from(conversationParticipants)
+    .where(
+      and(
+        eq(conversationParticipants.conversationId, req.params.id),
+        ne(conversationParticipants.userId, req.user!.id)
+      )
+    );
+
+  if (others.length) {
+    const senderName = await getUserFullName(req.user!.id);
+    await notifyUsers(
+      others.map((o) => o.userId),
+      {
+        type: "new_message",
+        title: `New Message from ${senderName}`,
+        body: data.body.length > 100 ? `${data.body.slice(0, 100)}...` : data.body,
+      }
+    );
+  }
 
   res.status(201).json(row);
 }

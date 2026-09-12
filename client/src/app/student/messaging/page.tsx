@@ -3,6 +3,7 @@
 import { useState } from "react";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import MessagingView from "@/components/messaging/MessagingView";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { useAuth } from "@/lib/auth-context";
 
 export default function MessagingPage() {
@@ -21,7 +22,8 @@ export default function MessagingPage() {
               <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="bg-transparent border-none focus:ring-0 text-body-md font-body-md w-full placeholder:text-outline-variant" placeholder="Search conversations..." type="text" />
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center font-bold text-primary">
               {user?.fullName?.[0] ?? "S"}
             </div>

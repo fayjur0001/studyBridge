@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
@@ -18,9 +18,18 @@ const ROLE_DASHBOARD: Record<Role, string> = {
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryEmail = searchParams.get("email");
+  const queryRole = searchParams.get("role") as Role | null;
+  const isResetSuccess = searchParams.get("reset") === "success";
+
   const { login } = useAuth();
-  const [role, setRole] = useState<Role>("student");
-  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<Role>(
+    queryRole === "agency" || queryRole === "admin" || queryRole === "student"
+      ? queryRole
+      : "student"
+  );
+  const [email, setEmail] = useState(queryEmail || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,6 +78,20 @@ export default function LoginForm() {
           ))}
         </div>
       </div>
+
+      {isResetSuccess && (
+        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2.5 mb-6 shadow-xs animate-in fade-in duration-200">
+          <span className="material-symbols-outlined text-emerald-600 text-[22px] shrink-0">
+            check_circle
+          </span>
+          <div>
+            <p className="font-bold text-sm">Password Reset Successfully 🎉</p>
+            <p className="text-[11px] opacity-90 mt-0.5">
+              Please enter your new password below to sign in to your account.
+            </p>
+          </div>
+        </div>
+      )}
 
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <Input

@@ -31,6 +31,8 @@ const agencyUpdateSchema = z.object({
   address: z.string().optional(),
   description: z.string().optional(),
   studentStories: z.string().max(10000).optional(),
+  supportedCountries: z.array(z.string()).optional(),
+  partnerUniversityIds: z.array(z.string()).optional(),
 });
 
 export async function updateMyAgencyProfile(req: Request, res: Response) {
@@ -67,8 +69,63 @@ export async function listAgencies(req: Request, res: Response) {
     userId: agencyProfiles.userId, companyName: agencyProfiles.companyName,
     website: agencyProfiles.website, address: agencyProfiles.address,
     description: agencyProfiles.description, isVerified: agencyProfiles.isVerified,
+    supportedCountries: agencyProfiles.supportedCountries,
+    partnerUniversityIds: agencyProfiles.partnerUniversityIds,
   }).from(agencyProfiles).orderBy(agencyProfiles.companyName);
   res.json({ data: rows });
+}
+
+export async function getSuggestedAgencies(req: Request, res: Response) {
+  const targetCountry = typeof req.query.country === "string" ? req.query.country.trim().toLowerCase() : "";
+  const targetUniversityId = typeof req.query.universityId === "string" ? req.query.universityId.trim() : "";
+
+  const agencies = await db
+    .select({
+      userId: agencyProfiles.userId,
+      companyName: agencyProfiles.companyName,
+      website: agencyProfiles.website,
+      address: agencyProfiles.address,
+      description: agencyProfiles.description,
+      isVerified: agencyProfiles.isVerified,
+      supportedCountries: agencyProfiles.supportedCountries,
+      partnerUniversityIds: agencyProfiles.partnerUniversityIds,
+      contactName: users.fullName,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(agencyProfiles)
+    .innerJoin(users, eq(agencyProfiles.userId, users.id))
+    .where(eq(users.isActive, true));
+
+  const scored = agencies.map((agency) => {
+    const supportedCountries = agency.supportedCountries || [];
+    const partnerUniversityIds = agency.partnerUniversityIds || [];
+
+    const isDirectPartner = Boolean(targetUniversityId && partnerUniversityIds.includes(targetUniversityId));
+    const isCountrySpecialist = Boolean(
+      targetCountry &&
+      supportedCountries.some((c) => {
+        const cLower = c.toLowerCase();
+        return cLower === targetCountry || targetCountry.includes(cLower) || cLower.includes(targetCountry);
+      })
+    );
+
+    let matchScore = 0;
+    if (isDirectPartner) matchScore += 10;
+    if (isCountrySpecialist) matchScore += 5;
+    if (agency.isVerified) matchScore += 1;
+
+    return {
+      ...agency,
+      isDirectPartner,
+      isCountrySpecialist,
+      matchScore,
+    };
+  });
+
+  scored.sort((a, b) => b.matchScore - a.matchScore || a.companyName.localeCompare(b.companyName));
+
+  res.json({ data: scored });
 }
 
 export async function getAgencyPublicProfile(req: Request, res: Response) {

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "@/lib/locale-context";
+import { useAuth } from "@/lib/auth-context";
 
 const NAV_ITEMS = [
   { href: "/student/dashboard", icon: "dashboard", label: "Dashboard" },
@@ -21,10 +22,17 @@ const SETTINGS_HREF = "/student/settings";
 
 export default function StudentSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useLocale();
+  const { logout } = useAuth();
 
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
+
+  async function handleLogout() {
+    await logout();
+    router.push("/");
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[260px] bg-primary dark:bg-[#0b1533] flex flex-col py-8 shadow-xl z-50">
@@ -112,13 +120,14 @@ export default function StudentSidebar() {
             <span className="material-symbols-outlined">settings</span>
             <span className="font-label-md">{t("settings")}</span>
           </Link>
-          <Link
-            href="/login"
-            className="flex items-center gap-3 text-primary-fixed-dim dark:text-[#c9d5ff] hover:text-on-primary px-4 py-2 transition-colors"
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-primary-fixed-dim dark:text-[#c9d5ff] hover:text-on-primary px-4 py-2 transition-colors w-full text-left cursor-pointer"
           >
             <span className="material-symbols-outlined">logout</span>
             <span className="font-label-md">{t("logout")}</span>
-          </Link>
+          </button>
         </div>
       </div>
     </aside>

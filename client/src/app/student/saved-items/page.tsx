@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { universityImage } from "@/lib/university-images";
 import { University, Scholarship } from "@/lib/types";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 interface SavedItem {
   userId: string;
@@ -72,6 +73,7 @@ export default function SavedItemsPage() {
 </div>
 </div>
 <div className="flex items-center gap-4">
+<NotificationBell />
 <div className="flex items-center gap-3 cursor-pointer">
 <div className="text-right">
 <p className="font-bold text-sm text-primary leading-tight">{user?.fullName ?? "..."}</p>

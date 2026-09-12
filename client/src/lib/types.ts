@@ -62,11 +62,42 @@ export type ApplicationStatus =
   | "rejected"
   | "withdrawn";
 
+export interface SuggestedAgency {
+  userId: string;
+  companyName: string;
+  website: string | null;
+  address: string | null;
+  description: string | null;
+  isVerified: boolean;
+  supportedCountries: string[];
+  partnerUniversityIds: string[];
+  contactName: string;
+  email: string;
+  avatarUrl: string | null;
+  isDirectPartner: boolean;
+  isCountrySpecialist: boolean;
+  matchScore: number;
+}
+
 export interface Application {
   id: string;
   status: ApplicationStatus;
   intake: string | null;
   notes: string | null;
+  agencyNotes?: string | null;
+  agencyId?: string | null;
+  documents?: StudentDocument[];
+  agency?: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string | null;
+    companyName: string;
+    website?: string | null;
+    address?: string | null;
+    isVerified: boolean;
+    avatarUrl?: string | null;
+  } | null;
   submittedAt: string | null;
   decidedAt: string | null;
   createdAt: string;
