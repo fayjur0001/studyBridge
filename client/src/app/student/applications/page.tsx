@@ -37,7 +37,11 @@ export default function ApplicationsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
-  const visibleApplications = applications.filter((app) => `${app.university.name} ${app.program.name} ${app.status}`.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+  const visibleApplications = applications.filter((app) =>
+    `${app.university.name} ${app.program.name} ${app.status} ${app.agency?.companyName || "direct"}`
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase().trim())
+  );
 
   return (
     <>
@@ -156,6 +160,17 @@ export default function ApplicationsPage() {
 <div>
 <p className="font-body-lg text-body-lg font-bold text-on-surface leading-tight">{app.university.name}</p>
 <p className="font-body-md text-body-md text-on-surface-variant">{app.program.name}</p>
+{app.agency ? (
+  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary bg-secondary/10 px-2.5 py-0.5 rounded-full mt-1.5">
+    <span className="material-symbols-outlined text-[13px]">support_agent</span>
+    Via: {app.agency.companyName}
+  </span>
+) : (
+  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-outline bg-surface-container px-2.5 py-0.5 rounded-full mt-1.5">
+    <span className="material-symbols-outlined text-[13px]">person</span>
+    Direct Application
+  </span>
+)}
 </div>
 </div>
 </td>

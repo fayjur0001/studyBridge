@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { href: "/student/messaging", icon: "forum", label: "Messaging" },
   { href: "/student/ai-recommendations", icon: "auto_awesome", label: "AI Recommendations" },
   { href: "/student/applications", icon: "assignment_turned_in", label: "Applications" },
-  { href: "/student/ai-tools", icon: "smart_toy", label: "AI Tools Hub" },
   { href: "/student/saved-items", icon: "bookmark", label: "Saved Items" },
   { href: "/student/documents", icon: "folder_open", label: "Document Vault" },
   { href: "/student/agencies", icon: "business", label: "Find Agencies" },
@@ -76,7 +75,7 @@ export default function StudentSidebar() {
               >
                 {item.icon}
               </span>
-              <span className="font-label-md text-label-md">{item.href === "/student/agencies" ? item.label : t(item.href === "/student/dashboard" ? "dashboard" : item.href === "/student/messaging" ? "messaging" : item.href === "/student/ai-recommendations" ? "recommendations" : item.href === "/student/applications" ? "applications" : item.href === "/student/ai-tools" ? "tools" : item.href === "/student/saved-items" ? "saved" : "documents")}</span>
+              <span className="font-label-md text-label-md">{item.href === "/student/agencies" ? item.label : t(item.href === "/student/dashboard" ? "dashboard" : item.href === "/student/messaging" ? "messaging" : item.href === "/student/ai-recommendations" ? "recommendations" : item.href === "/student/applications" ? "applications" : item.href === "/student/saved-items" ? "saved" : "documents")}</span>
             </Link>
           );
         })}

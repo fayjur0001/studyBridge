@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/agency/dashboard", icon: "dashboard", label: "Dashboard" },
   { href: "/agency/students", icon: "group", label: "My Students" },
   { href: "/agency/programs", icon: "school", label: "Programs" },
+  { href: "/agency/submissions", icon: "domain_add", label: "Institutions & Grants" },
   { href: "/agency/applications", icon: "assignment", label: "Applications" },
   { href: "/agency/messages", icon: "mail", label: "Messages" },
   { href: "/agency/analytics", icon: "analytics", label: "Analytics" },

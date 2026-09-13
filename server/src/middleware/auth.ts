@@ -38,3 +38,20 @@ export function requireRole(...roles: UserRole[]) {
     next();
   };
 }
+
+export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    return next();
+  }
+
+  const token = header.slice("Bearer ".length);
+  try {
+    const payload = verifyAccessToken(token);
+    req.user = { id: payload.sub, role: payload.role };
+  } catch {
+    // Ignore invalid optional tokens
+  }
+  next();
+}
+

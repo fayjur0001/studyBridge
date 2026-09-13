@@ -81,14 +81,24 @@ export default function AdminProgramsPage() {
         setSaving(false);
         return;
       }
+      if (!form.name.trim()) {
+        setError("Please enter the program name.");
+        setSaving(false);
+        return;
+      }
+      if (!form.degreeLevel.trim()) {
+        setError("Please select the degree level.");
+        setSaving(false);
+        return;
+      }
       const payload = {
         universityId: form.universityId,
-        name: form.name,
-        degreeLevel: form.degreeLevel,
-        field: form.field || undefined,
-        durationMonths: form.durationMonths ? Number(form.durationMonths) : undefined,
-        tuitionFeeUsd: form.tuitionFeeUsd ? Number(form.tuitionFeeUsd) : undefined,
-        description: form.description || undefined,
+        name: form.name.trim(),
+        degreeLevel: form.degreeLevel.trim(),
+        field: form.field?.trim() || undefined,
+        durationMonths: form.durationMonths && Number(form.durationMonths) > 0 ? Number(form.durationMonths) : undefined,
+        tuitionFeeUsd: form.tuitionFeeUsd && Number(form.tuitionFeeUsd) >= 0 ? Number(form.tuitionFeeUsd) : undefined,
+        description: form.description?.trim() || undefined,
       };
       if (editingId) {
         await api.patch(`/api/programs/${editingId}`, payload);
@@ -98,7 +108,11 @@ export default function AdminProgramsPage() {
       setShowForm(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't save this program.");
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Couldn't save this program.");
+      }
     } finally {
       setSaving(false);
     }

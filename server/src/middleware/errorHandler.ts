@@ -9,9 +9,13 @@ export function notFoundHandler(req: Request, res: Response) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ZodError) {
+    const flat = err.flatten();
+    const fieldMessages = Object.entries(flat.fieldErrors)
+      .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`)
+      .join("; ");
     return res.status(422).json({
-      error: "Validation failed.",
-      details: err.flatten(),
+      error: fieldMessages ? `Validation failed: ${fieldMessages}` : "Validation failed.",
+      details: flat,
     });
   }
 

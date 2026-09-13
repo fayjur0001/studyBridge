@@ -14,6 +14,10 @@ interface AgencyApplication {
   status: ApplicationStatus;
   intake: string | null;
   agencyNotes?: string | null;
+  applicationFee?: string | null;
+  agencyShare?: string | null;
+  paymentStatus?: string | null;
+  paidAt?: string | null;
   submittedAt: string | null;
   createdAt: string;
   studentName: string;
@@ -264,6 +268,9 @@ export default function AgencyApplicationsPage() {
                     Status
                   </th>
                   <th className="pb-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+                    Fee & Share (90%)
+                  </th>
+                  <th className="pb-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
                     Counselor Notes
                   </th>
                   <th className="pb-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">
@@ -274,7 +281,7 @@ export default function AgencyApplicationsPage() {
               <tbody className="divide-y divide-outline-variant/20">
                 {!loading && applications.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-on-surface-variant font-body-md">
+                    <td colSpan={6} className="py-12 text-center text-on-surface-variant font-body-md">
                       No applications assigned to your agency yet.
                     </td>
                   </tr>
@@ -314,6 +321,22 @@ export default function AgencyApplicationsPage() {
                       </td>
                       <td className="py-5">
                         <ApplicationStatusBadge status={a.status} />
+                      </td>
+                      <td className="py-5">
+                        {a.paymentStatus === "paid" ? (
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                              ✓ ৳{Number(a.agencyShare || 2700).toLocaleString()} Paid
+                            </span>
+                            <p className="text-[10px] text-on-surface-variant mt-0.5">
+                              From ৳{Number(a.applicationFee || 3000).toLocaleString()} fee
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-container-high text-on-surface-variant">
+                            Unpaid
+                          </span>
+                        )}
                       </td>
                       <td className="py-5 max-w-xs">
                         {a.agencyNotes ? (

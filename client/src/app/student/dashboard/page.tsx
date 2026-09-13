@@ -95,7 +95,7 @@ export default function StudentDashboardPage() {
 <div className="flex items-center gap-6">
 <div className="flex items-center gap-2 text-on-surface-variant">
 <NotificationBell />
-<Link href="/student/ai-tools/documentation" title="Help and documentation" aria-label="Help and documentation" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">help_outline</span></Link>
+<Link href="/student/messaging" title="Help and support" aria-label="Help and support" className="p-2 hover:bg-surface-container-low rounded-full hover:text-primary"><span className="material-symbols-outlined">help_outline</span></Link>
 </div>
 <div className="flex items-center gap-3 cursor-pointer group">
 <div className="text-right hidden sm:block">

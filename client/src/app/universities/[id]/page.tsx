@@ -47,7 +47,7 @@ export default function UniversityDetailPage() {
     setApplyError(null);
 
     if (!user) {
-      setApplyError("Please log in as a student to apply.");
+      router.push(`/login?redirect=/universities/${university?.id}`);
       return;
     }
     if (user.role !== "student") {
@@ -59,7 +59,7 @@ export default function UniversityDetailPage() {
     setIsApplyModalOpen(true);
   }
 
-  async function handleConfirmApply(agencyId: string | null) {
+  async function handleConfirmApply(agencyId: string | null, paymentDetails?: any) {
     if (!selectedProgramForApply) return;
     setApplyError(null);
     const programId = selectedProgramForApply.id;
@@ -69,6 +69,7 @@ export default function UniversityDetailPage() {
       const application = await api.post<{ id: string }>("/api/applications", {
         programId,
         agencyId: agencyId || undefined,
+        ...(paymentDetails || {}),
       });
       setAppliedProgramIds((prev) => new Set(prev).add(programId));
       setIsApplyModalOpen(false);

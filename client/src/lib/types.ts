@@ -25,6 +25,19 @@ export interface University {
   ranking: number | null;
   websiteUrl: string | null;
   isFeatured: boolean;
+  status?: "pending" | "approved" | "rejected";
+  submittedByAgencyId?: string | null;
+  submittedByAgency?: {
+    id: string;
+    fullName: string;
+    email: string;
+    agencyProfile?: {
+      companyName: string;
+    } | null;
+  } | null;
+  rejectionReason?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Program {
@@ -51,6 +64,24 @@ export interface Scholarship {
   eligibility: string | null;
   description: string | null;
   applyUrl: string | null;
+  status?: "pending" | "approved" | "rejected";
+  submittedByAgencyId?: string | null;
+  submittedByAgency?: {
+    id: string;
+    fullName: string;
+    email: string;
+    agencyProfile?: {
+      companyName: string;
+    } | null;
+  } | null;
+  university?: {
+    id: string;
+    name: string;
+    country: string;
+  } | null;
+  rejectionReason?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type ApplicationStatus =

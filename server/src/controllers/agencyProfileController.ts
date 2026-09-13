@@ -33,6 +33,7 @@ const agencyUpdateSchema = z.object({
   studentStories: z.string().max(10000).optional(),
   supportedCountries: z.array(z.string()).optional(),
   partnerUniversityIds: z.array(z.string()).optional(),
+  serviceFee: z.string().optional(),
 });
 
 export async function updateMyAgencyProfile(req: Request, res: Response) {
@@ -71,6 +72,7 @@ export async function listAgencies(req: Request, res: Response) {
     description: agencyProfiles.description, isVerified: agencyProfiles.isVerified,
     supportedCountries: agencyProfiles.supportedCountries,
     partnerUniversityIds: agencyProfiles.partnerUniversityIds,
+    serviceFee: agencyProfiles.serviceFee,
   }).from(agencyProfiles).orderBy(agencyProfiles.companyName);
   res.json({ data: rows });
 }
@@ -89,6 +91,7 @@ export async function getSuggestedAgencies(req: Request, res: Response) {
       isVerified: agencyProfiles.isVerified,
       supportedCountries: agencyProfiles.supportedCountries,
       partnerUniversityIds: agencyProfiles.partnerUniversityIds,
+      serviceFee: agencyProfiles.serviceFee,
       contactName: users.fullName,
       email: users.email,
       avatarUrl: users.avatarUrl,

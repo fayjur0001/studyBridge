@@ -14,6 +14,14 @@ export async function listMyApplications(req: Request, res: Response) {
       intake: applications.intake,
       notes: applications.notes,
       agencyId: applications.agencyId,
+      agencyCompanyName: agencyProfiles.companyName,
+      agencyVerified: agencyProfiles.isVerified,
+      applicationFee: applications.applicationFee,
+      platformCommission: applications.platformCommission,
+      agencyShare: applications.agencyShare,
+      paymentStatus: applications.paymentStatus,
+      transactionId: applications.transactionId,
+      paidAt: applications.paidAt,
       submittedAt: applications.submittedAt,
       decidedAt: applications.decidedAt,
       createdAt: applications.createdAt,
@@ -32,10 +40,37 @@ export async function listMyApplications(req: Request, res: Response) {
     .from(applications)
     .innerJoin(programs, eq(applications.programId, programs.id))
     .innerJoin(universities, eq(programs.universityId, universities.id))
+    .leftJoin(agencyProfiles, eq(applications.agencyId, agencyProfiles.userId))
     .where(eq(applications.studentId, req.user!.id))
     .orderBy(desc(applications.createdAt));
 
-  res.json({ data: rows });
+  const data = rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    intake: r.intake,
+    notes: r.notes,
+    agencyId: r.agencyId,
+    applicationFee: r.applicationFee,
+    platformCommission: r.platformCommission,
+    agencyShare: r.agencyShare,
+    paymentStatus: r.paymentStatus,
+    transactionId: r.transactionId,
+    paidAt: r.paidAt,
+    submittedAt: r.submittedAt,
+    decidedAt: r.decidedAt,
+    createdAt: r.createdAt,
+    program: r.program,
+    university: r.university,
+    agency: r.agencyId
+      ? {
+          id: r.agencyId,
+          companyName: r.agencyCompanyName || "Assigned Agency",
+          isVerified: !!r.agencyVerified,
+        }
+      : null,
+  }));
+
+  res.json({ data });
 }
 
 export async function getMyApplicationStats(req: Request, res: Response) {
@@ -99,6 +134,10 @@ const createApplicationSchema = z.object({
   agencyId: z.string().uuid().optional(),
   intake: z.string().optional(),
   notes: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  accountNumber: z.string().optional(),
+  bankName: z.string().optional(),
+  cardOrReference: z.string().optional(),
 });
 
 export async function createMyApplication(req: Request, res: Response) {
@@ -118,6 +157,42 @@ export async function createMyApplication(req: Request, res: Response) {
     throw new AppError("You already have an active application for this program.", 409);
   }
 
+  let fee = 0;
+  let platformCommission = 0;
+  let agencyShare = 0;
+  let paymentStatus = "unpaid";
+  let transactionId: string | null = null;
+  let paymentDetails: any = null;
+  let paidAt: Date | null = null;
+  let initialStatus: "draft" | "submitted" = "draft";
+  let submittedAt: Date | null = null;
+
+  if (data.agencyId) {
+    const agencyProfile = await db.query.agencyProfiles.findFirst({
+      where: eq(agencyProfiles.userId, data.agencyId),
+    });
+    const parsedFee = agencyProfile ? Number(agencyProfile.serviceFee) : 3000.0;
+    fee = isNaN(parsedFee) || parsedFee <= 0 ? 3000.0 : parsedFee;
+    platformCommission = Number((fee * 0.1).toFixed(2));
+    agencyShare = Number((fee - platformCommission).toFixed(2));
+    paymentStatus = "paid";
+    transactionId = `TXN_APP_${Date.now()}_${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    paidAt = new Date();
+    paymentDetails = {
+      paymentMethod: data.paymentMethod || "bKash",
+      accountNumber: data.accountNumber || "017XXXXXXXX",
+      bankName: data.bankName || null,
+      cardOrReference: data.cardOrReference || null,
+      currency: "BDT",
+      paidAt: paidAt.toISOString(),
+      fee,
+      platformCommission,
+      agencyShare,
+    };
+    initialStatus = "submitted";
+    submittedAt = paidAt;
+  }
+
   const [row] = await db
     .insert(applications)
     .values({
@@ -126,6 +201,15 @@ export async function createMyApplication(req: Request, res: Response) {
       agencyId: data.agencyId ?? null,
       intake: data.intake,
       notes: data.notes,
+      applicationFee: fee.toFixed(2),
+      platformCommission: platformCommission.toFixed(2),
+      agencyShare: agencyShare.toFixed(2),
+      paymentStatus,
+      transactionId,
+      paymentDetails,
+      paidAt,
+      status: initialStatus,
+      submittedAt,
     })
     .returning();
 
@@ -142,22 +226,34 @@ export async function createMyApplication(req: Request, res: Response) {
 
     await notifyUser(data.agencyId, {
       type: "application_assigned",
-      title: "New Student Application Assigned",
-      body: `${studentName} started an application for ${program.name} and selected your agency.`,
+      title: "New Student Application Assigned & Paid",
+      body: `${studentName} applied for ${program.name}. Application fee: ৳${fee.toLocaleString()} BDT (Agency Share: ৳${agencyShare.toLocaleString()} BDT, Platform Commission: ৳${platformCommission.toLocaleString()} BDT).`,
+    });
+
+    await notifyUser(req.user!.id, {
+      type: "application_started",
+      title: "Application Submitted & Paid",
+      body: `You successfully paid ৳${fee.toLocaleString()} BDT and submitted your application for ${program.name} with agency assistance.`,
+    });
+
+    await notifyAdmins({
+      type: "application_created",
+      title: "Agency Application Fee Paid",
+      body: `${studentName} paid ৳${fee.toLocaleString()} BDT for application to ${program.name}. Platform Commission earned: ৳${platformCommission.toLocaleString()} BDT (10%).`,
+    });
+  } else {
+    await notifyUser(req.user!.id, {
+      type: "application_started",
+      title: "Application Started",
+      body: `You successfully started an application for ${program.name}.`,
+    });
+
+    await notifyAdmins({
+      type: "application_created",
+      title: "New Application Started",
+      body: `${studentName} created an application for ${program.name}.`,
     });
   }
-
-  await notifyUser(req.user!.id, {
-    type: "application_started",
-    title: "Application Started",
-    body: `You successfully started an application for ${program.name}.`,
-  });
-
-  await notifyAdmins({
-    type: "application_created",
-    title: "New Application Started",
-    body: `${studentName} created an application for ${program.name}.`,
-  });
 
   res.status(201).json(row);
 }

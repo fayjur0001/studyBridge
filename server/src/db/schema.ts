@@ -41,6 +41,15 @@ export const savedItemTypeEnum = pgEnum("saved_item_type", [
   "scholarship",
 ]);
 
+export const verificationStatusEnum = pgEnum("verification_status", [
+  "pending_payment",
+  "paid",
+  "under_review",
+  "approved",
+  "rejected",
+  "documents_requested",
+]);
+
 /* -------------------------------------------------------------------------- */
 /* Users & role-specific profiles                                            */
 /* -------------------------------------------------------------------------- */
@@ -86,6 +95,7 @@ export const agencyProfiles = pgTable("agency_profiles", {
   isVerified: boolean("is_verified").notNull().default(false),
   supportedCountries: jsonb("supported_countries").$type<string[]>().default([]),
   partnerUniversityIds: jsonb("partner_university_ids").$type<string[]>().default([]),
+  serviceFee: numeric("service_fee", { precision: 10, scale: 2 }).notNull().default("3000.00"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -155,6 +165,11 @@ export const universities = pgTable("universities", {
   ranking: integer("ranking"),
   websiteUrl: text("website_url"),
   isFeatured: boolean("is_featured").notNull().default(false),
+  status: varchar("status", { length: 30 }).notNull().default("approved"),
+  submittedByAgencyId: uuid("submitted_by_agency_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -189,6 +204,11 @@ export const scholarships = pgTable("scholarships", {
   eligibility: text("eligibility"),
   description: text("description"),
   applyUrl: text("apply_url"),
+  status: varchar("status", { length: 30 }).notNull().default("approved"),
+  submittedByAgencyId: uuid("submitted_by_agency_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -210,6 +230,13 @@ export const applications = pgTable("applications", {
   intake: varchar("intake", { length: 60 }),
   notes: text("notes"),
   agencyNotes: text("agency_notes"),
+  applicationFee: numeric("application_fee", { precision: 10, scale: 2 }).default("0.00"),
+  platformCommission: numeric("platform_commission", { precision: 10, scale: 2 }).default("0.00"),
+  agencyShare: numeric("agency_share", { precision: 10, scale: 2 }).default("0.00"),
+  paymentStatus: varchar("payment_status", { length: 30 }).notNull().default("unpaid"),
+  transactionId: varchar("transaction_id", { length: 120 }),
+  paymentDetails: jsonb("payment_details"),
+  paidAt: timestamp("paid_at"),
   submittedAt: timestamp("submitted_at"),
   decidedAt: timestamp("decided_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -388,6 +415,29 @@ export const siteContent = pgTable("site_content", {
   updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
 });
 
+export const agencyVerificationRequests = pgTable("agency_verification_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  agencyId: uuid("agency_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: verificationStatusEnum("status").notNull().default("pending_payment"),
+  feeAmount: numeric("fee_amount", { precision: 10, scale: 2 }).notNull().default("5000.00"),
+  currency: varchar("currency", { length: 10 }).notNull().default("BDT"),
+  transactionId: varchar("transaction_id", { length: 120 }).notNull().unique(),
+  sslSessionKey: varchar("ssl_session_key", { length: 255 }),
+  paymentStatus: varchar("payment_status", { length: 30 }).notNull().default("unpaid"),
+  paymentDetails: jsonb("payment_details"),
+  adminNotes: text("admin_notes"),
+  serviceFeeDeducted: numeric("service_fee_deducted", { precision: 10, scale: 2 }),
+  refundAmount: numeric("refund_amount", { precision: 10, scale: 2 }),
+  refundStatus: varchar("refund_status", { length: 30 }).default("none"),
+  refundDetails: jsonb("refund_details"),
+  reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 /* -------------------------------------------------------------------------- */
 /* Notification preferences (per-user, simple on/off per channel per event)  */
 /* -------------------------------------------------------------------------- */
@@ -420,6 +470,22 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   agencyFiles: many(agencyFiles),
   agencyLinksAsStudent: many(agencyStudents, { relationName: "studentLinks" }),
   agencyLinksAsAgency: many(agencyStudents, { relationName: "agencyLinks" }),
+  verificationRequests: many(agencyVerificationRequests, { relationName: "verificationAgency" }),
+  submittedUniversities: many(universities, { relationName: "agencySubmittedUniversities" }),
+  submittedScholarships: many(scholarships, { relationName: "agencySubmittedScholarships" }),
+}));
+
+export const agencyVerificationRequestsRelations = relations(agencyVerificationRequests, ({ one }) => ({
+  agency: one(users, {
+    fields: [agencyVerificationRequests.agencyId],
+    references: [users.id],
+    relationName: "verificationAgency",
+  }),
+  reviewer: one(users, {
+    fields: [agencyVerificationRequests.reviewedBy],
+    references: [users.id],
+    relationName: "verificationReviewer",
+  }),
 }));
 
 export const agencyFilesRelations = relations(agencyFiles, ({ one }) => ({
@@ -439,9 +505,26 @@ export const agencyStudentsRelations = relations(agencyStudents, ({ one }) => ({
   }),
 }));
 
-export const universitiesRelations = relations(universities, ({ many }) => ({
+export const universitiesRelations = relations(universities, ({ one, many }) => ({
   programs: many(programs),
   scholarships: many(scholarships),
+  submittedByAgency: one(users, {
+    fields: [universities.submittedByAgencyId],
+    references: [users.id],
+    relationName: "agencySubmittedUniversities",
+  }),
+}));
+
+export const scholarshipsRelations = relations(scholarships, ({ one }) => ({
+  university: one(universities, {
+    fields: [scholarships.universityId],
+    references: [universities.id],
+  }),
+  submittedByAgency: one(users, {
+    fields: [scholarships.submittedByAgencyId],
+    references: [users.id],
+    relationName: "agencySubmittedScholarships",
+  }),
 }));
 
 export const programsRelations = relations(programs, ({ one, many }) => ({

@@ -11,6 +11,7 @@ import agencyRoutes from "./agencyRoutes";
 import adminRoutes from "./adminRoutes";
 import messageRoutes from "./messageRoutes";
 import notificationRoutes from "./notificationRoutes";
+import paymentRoutes from "./paymentRoutes";
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use("/agency", agencyRoutes);
 router.use("/admin", adminRoutes);
 router.use("/conversations", messageRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/payment", paymentRoutes);
 
 // Phase 7: wire the frontend to this API.
 

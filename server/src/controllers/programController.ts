@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { programs, universities } from "@/db/schema";
 import { AppError } from "@/utils/AppError";
 import { paginationSchema, paginationMeta } from "@/utils/pagination";
+import { optionalInt, optionalNumber } from "@/utils/zodHelpers";
 
 const listQuerySchema = paginationSchema.extend({
   universityId: z.string().uuid().optional(),
@@ -47,13 +48,13 @@ export async function getProgram(req: Request, res: Response) {
 
 const programInputSchema = z.object({
   universityId: z.string().uuid(),
-  name: z.string().min(2),
-  degreeLevel: z.string().min(2),
-  field: z.string().optional(),
-  durationMonths: z.coerce.number().int().positive().optional(),
-  tuitionFeeUsd: z.coerce.number().nonnegative().optional(),
+  name: z.string().trim().min(2, "Program name must be at least 2 characters"),
+  degreeLevel: z.string().trim().min(2, "Degree level is required"),
+  field: z.string().trim().optional(),
+  durationMonths: optionalInt({ positive: true }),
+  tuitionFeeUsd: optionalNumber({ nonnegative: true }),
   intakeMonths: z.array(z.string()).optional(),
-  description: z.string().optional(),
+  description: z.string().trim().optional(),
 });
 
 export async function createProgram(req: Request, res: Response) {

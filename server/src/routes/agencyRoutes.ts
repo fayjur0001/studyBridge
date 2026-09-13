@@ -5,6 +5,11 @@ import { getMyAgencyProfile, updateMyAgencyProfile, getAgencyPublicProfile, list
 import { deleteMyAgencyFile, listMyAgencyFiles, uploadAgencyFile, uploadMyAgencyAvatar, viewAgencyAvatar, viewAgencyFile } from "@/controllers/agencyFileController";
 import { uploadDocument } from "@/middleware/upload";
 import {
+  getMyVerificationStatus,
+  initiateVerificationPayment,
+  completeDemoPayment,
+} from "@/controllers/agencyVerificationController";
+import {
   listMyStudents,
   getMyStudent,
   linkStudent,
@@ -30,6 +35,8 @@ import { getMySettings, updateMySettings } from "@/controllers/studentSettingsCo
 import { inviteTeamMember, listMyTeam, removeTeamMember, updateTeamMember } from "@/controllers/agencyTeamController";
 import { listMyServiceInterests } from "@/controllers/agencyServiceInterestController";
 import { listMyNotifications, markMyNotificationsRead } from "@/controllers/notificationController";
+import { listUniversities } from "@/controllers/universityController";
+import { listScholarships } from "@/controllers/scholarshipController";
 
 const router = Router();
 
@@ -49,6 +56,11 @@ router.post("/me/avatar", uploadDocument.single("avatar"), asyncHandler(uploadMy
 router.get("/files", asyncHandler(listMyAgencyFiles));
 router.post("/files", uploadDocument.single("file"), asyncHandler(uploadAgencyFile));
 router.delete("/files/:id", asyncHandler(deleteMyAgencyFile));
+
+// Official Verification & SSLCommerz Payment
+router.get("/verification/status", asyncHandler(getMyVerificationStatus));
+router.post("/verification/apply", asyncHandler(initiateVerificationPayment));
+router.post("/verification/demo-pay", asyncHandler(completeDemoPayment));
 
 router.get("/dashboard/stats", asyncHandler(getAgencyDashboardStats));
 router.get("/analytics", asyncHandler(getAgencyAnalytics));
@@ -77,5 +89,15 @@ router.delete("/students/:id", asyncHandler(unlinkStudent));
 
 router.get("/applications", asyncHandler(listAgencyApplications));
 router.patch("/applications/:id/status", uploadDocument.single("file"), asyncHandler(updateAgencyApplicationStatus));
+
+router.get("/submissions/universities", (req, res, next) => {
+  req.query.mySubmissions = "true";
+  next();
+}, asyncHandler(listUniversities));
+
+router.get("/submissions/scholarships", (req, res, next) => {
+  req.query.mySubmissions = "true";
+  next();
+}, asyncHandler(listScholarships));
 
 export default router;

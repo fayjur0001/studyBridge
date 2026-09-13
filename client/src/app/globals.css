@@ -313,3 +313,29 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #0d3286;
 }
+
+/* Print optimization styles for clean administrative statements */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+    min-height: auto !important;
+  }
+  .ambient-card,
+  .ambient-shadow {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+  }
+}

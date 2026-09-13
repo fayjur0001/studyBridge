@@ -2,7 +2,13 @@ import { Router } from "express";
 import { asyncHandler } from "@/utils/asyncHandler";
 import { requireAuth, requireRole } from "@/middleware/auth";
 import { listUsers, getUser, setUserActive } from "@/controllers/adminUserController";
-import { listAgencies, setAgencyVerified } from "@/controllers/adminAgencyController";
+import {
+  listAgencies,
+  setAgencyVerified,
+  requestAgencyDocuments,
+  rejectAgencyVerification,
+  getAdminFinancialStats,
+} from "@/controllers/adminAgencyController";
 import {
   getAdminOverviewStats,
   getAdminReportStats,
@@ -18,6 +24,7 @@ router.use(requireAuth, requireRole("admin"));
 
 router.get("/overview", asyncHandler(getAdminOverviewStats));
 router.get("/reports", asyncHandler(getAdminReportStats));
+router.get("/financials", asyncHandler(getAdminFinancialStats));
 router.get("/analytics", asyncHandler(getAdminAnalytics));
 router.get("/agencies/analytics", asyncHandler(getAdminAgencyAnalytics));
 router.get("/settings", asyncHandler(getMySettings));
@@ -32,5 +39,7 @@ router.patch("/users/:id/active", asyncHandler(setUserActive));
 
 router.get("/agencies", asyncHandler(listAgencies));
 router.patch("/agencies/:id/verify", asyncHandler(setAgencyVerified));
+router.post("/agencies/:id/request-documents", asyncHandler(requestAgencyDocuments));
+router.post("/agencies/:id/reject-refund", asyncHandler(rejectAgencyVerification));
 
 export default router;

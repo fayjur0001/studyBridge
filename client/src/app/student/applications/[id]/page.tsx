@@ -341,6 +341,40 @@ export default function ApplicationDetailPage() {
                 </section>
               )}
 
+              {/* Direct Application (Self-Managed) Card */}
+              {!app.agency && (
+                <section className="bg-white rounded-[24px] p-6 occlusion-shadow border-l-4 border-primary">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                        <span className="material-symbols-outlined text-[28px]">person</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-on-surface text-body-lg">
+                            Direct Application (Self-Managed)
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+                            <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                            Independent
+                          </span>
+                        </div>
+                        <p className="text-sm text-on-surface-variant mt-0.5">
+                          You are managing this application directly with {app.university?.name || "the university"}. No agency is assigned.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/student/agencies"
+                      className="px-4 py-2 rounded-xl border border-outline-variant text-sm font-semibold text-primary hover:bg-surface-container transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">support_agent</span>
+                      Need Agency Assistance?
+                    </Link>
+                  </div>
+                </section>
+              )}
+
               {/* Attached Documents Section with Download / View Actions */}
               <div className="bg-white rounded-[24px] p-8 occlusion-shadow">
                 <div className="flex justify-between items-center mb-6">

@@ -150,7 +150,7 @@ export default function RecommendationsPage() {
     setIsApplyModalOpen(true);
   }
 
-  async function handleConfirmApply(agencyId: string | null) {
+  async function handleConfirmApply(agencyId: string | null, paymentDetails?: any) {
     if (!selectedProgramForApply) return;
     setApplying(true);
     setApplyError(null);
@@ -158,6 +158,7 @@ export default function RecommendationsPage() {
       const application = await api.post<{ id: string }>("/api/applications", {
         programId: selectedProgramForApply.id,
         agencyId: agencyId || undefined,
+        ...(paymentDetails || {}),
       });
       setIsApplyModalOpen(false);
       router.push(`/student/applications/${application.id}`);
