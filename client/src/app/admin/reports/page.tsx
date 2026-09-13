@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AdminSidebar from "@/components/dashboard/AdminSidebar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { api } from "@/lib/api";
+import PaymentReceiptModal, { ReceiptData } from "@/components/applications/PaymentReceiptModal";
 
 type ReportRow = {
   id: string;
@@ -131,6 +132,7 @@ export default function AdminReportsPage() {
   const [appFinQuery, setAppFinQuery] = useState("");
   const [finLedgerView, setFinLedgerView] = useState<"verification" | "application_commissions">("verification");
   const [finLoading, setFinLoading] = useState(true);
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
 
   // Check URL query for tab pre-selection
   useEffect(() => {
@@ -852,7 +854,7 @@ export default function AdminReportsPage() {
             {finLedgerView === "application_commissions" && (
               <>
                 <section className="flex flex-col sm:flex-row gap-3 items-center justify-between no-print">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-on-surface-variant">
                       Student Agency Applications ({filteredAppFinRows.length} total paid)
                     </span>
@@ -861,21 +863,42 @@ export default function AdminReportsPage() {
                     </span>
                   </div>
 
-                  <div className="relative w-full sm:w-80">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-base">
-                      search
-                    </span>
-                    <input
-                      value={appFinQuery}
-                      onChange={(e) => setAppFinQuery(e.target.value)}
-                      placeholder="Search student, agency, program, TrxID..."
-                      className="w-full pl-9 pr-4 py-2 bg-surface-container-low border border-outline-variant/30 rounded-xl text-xs text-on-surface focus:ring-2 focus:ring-primary/20 outline-none"
-                    />
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={exportFinancialCsv}
+                      disabled={filteredAppFinRows.length === 0}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-on-primary rounded-xl font-bold text-xs shadow-xs hover:opacity-90 transition-all cursor-pointer disabled:opacity-50"
+                      title="Download Student Application Commission Report CSV"
+                    >
+                      <span className="material-symbols-outlined text-base">download</span>
+                      Download Report (CSV)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant/30 rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer"
+                      title="Print or Save PDF Statement"
+                    >
+                      <span className="material-symbols-outlined text-base">print</span>
+                      Print Statement
+                    </button>
+                    <div className="relative w-full sm:w-72">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-base">
+                        search
+                      </span>
+                      <input
+                        value={appFinQuery}
+                        onChange={(e) => setAppFinQuery(e.target.value)}
+                        placeholder="Search student, agency, TrxID..."
+                        className="w-full pl-9 pr-4 py-2 bg-surface-container-low border border-outline-variant/30 rounded-xl text-xs text-on-surface focus:ring-2 focus:ring-primary/20 outline-none"
+                      />
+                    </div>
                   </div>
                 </section>
 
                 <section className="bg-surface-container-lowest rounded-3xl ambient-shadow border border-outline-variant/20 overflow-hidden print:border-gray-400">
-                  <div className="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center bg-surface-container-low/50">
+                  <div className="px-6 py-4 border-b border-outline-variant/20 flex flex-wrap justify-between items-center gap-3 bg-surface-container-low/50">
                     <div>
                       <h4 className="font-bold text-sm text-primary flex items-center gap-2">
                         <span className="material-symbols-outlined text-base">percent</span>
@@ -885,9 +908,20 @@ export default function AdminReportsPage() {
                         Audit of ৳3,000 application fee collected from students via SSLCommerz: 10% Platform Commission (৳300) and 90% Agency Counseling Share (৳2,700).
                       </p>
                     </div>
-                    <span className="px-2.5 py-1 bg-surface-container text-on-surface-variant rounded-lg text-xs font-bold font-mono">
-                      {filteredAppFinRows.length} Records
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={exportFinancialCsv}
+                        disabled={filteredAppFinRows.length === 0}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-bold text-primary border border-outline-variant/20 transition-colors cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">download</span>
+                        Export Report
+                      </button>
+                      <span className="px-2.5 py-1 bg-surface-container text-on-surface-variant rounded-lg text-xs font-bold font-mono">
+                        {filteredAppFinRows.length} Records
+                      </span>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto">
@@ -902,18 +936,19 @@ export default function AdminReportsPage() {
                           <th className="px-6 py-3.5 text-right">Agency Share (90%)</th>
                           <th className="px-6 py-3.5">Payment Method &amp; TrxID</th>
                           <th className="px-6 py-3.5">Paid Date</th>
+                          <th className="px-6 py-3.5 text-right no-print">Receipt Voucher</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/15">
                         {finLoading ? (
                           <tr>
-                            <td colSpan={8} className="p-10 text-center text-on-surface-variant">
+                            <td colSpan={9} className="p-10 text-center text-on-surface-variant">
                               Loading application commissions...
                             </td>
                           </tr>
                         ) : filteredAppFinRows.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="p-10 text-center text-on-surface-variant">
+                            <td colSpan={9} className="p-10 text-center text-on-surface-variant">
                               No student agency application payment records found.
                             </td>
                           </tr>
@@ -960,6 +995,18 @@ export default function AdminReportsPage() {
                               <td className="px-6 py-3.5 text-on-surface-variant font-mono text-[11px] whitespace-nowrap">
                                 {new Date(app.paidAt).toLocaleDateString()}
                               </td>
+
+                              <td className="px-6 py-3.5 text-right no-print">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedReceipt(app)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-primary hover:text-on-primary text-primary font-bold text-xs transition-colors cursor-pointer"
+                                  title="View and download formal payment receipt voucher"
+                                >
+                                  <span className="material-symbols-outlined text-[15px]">receipt_long</span>
+                                  Receipt
+                                </button>
+                              </td>
                             </tr>
                           ))
                         )}
@@ -981,7 +1028,7 @@ export default function AdminReportsPage() {
                             <td className="px-6 py-3 text-right font-mono text-indigo-700 dark:text-indigo-300 font-black">
                               ৳{filteredAppFinRows.reduce((a, c) => a + c.agencyShare, 0).toLocaleString()}
                             </td>
-                            <td colSpan={2} className="px-6 py-3 text-right text-outline text-[11px]">
+                            <td colSpan={3} className="px-6 py-3 text-right text-outline text-[11px]">
                               10% Admin Platform Commission
                             </td>
                           </tr>
@@ -1133,6 +1180,12 @@ export default function AdminReportsPage() {
             </section>
           </div>
         )}
+        {/* Payment Receipt Voucher Modal */}
+        <PaymentReceiptModal
+          receipt={selectedReceipt}
+          onClose={() => setSelectedReceipt(null)}
+          showCommissionSplit={true}
+        />
       </main>
     </>
   );

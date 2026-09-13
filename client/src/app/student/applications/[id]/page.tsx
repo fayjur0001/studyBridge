@@ -9,6 +9,8 @@ import { api, API_BASE_URL, getAccessToken, tryRefresh } from "@/lib/api";
 import { ApplicationStatus, DocumentStatus } from "@/lib/types";
 import { ApplicationStatusBadge } from "@/components/applications/ApplicationStatusBadge";
 import { universityImage } from "@/lib/university-images";
+import { useAuth } from "@/lib/auth-context";
+import PaymentReceiptModal from "@/components/applications/PaymentReceiptModal";
 
 interface ApplicationDetail {
   id: string;
@@ -30,6 +32,13 @@ interface ApplicationDetail {
   submittedAt: string | null;
   decidedAt?: string | null;
   createdAt: string;
+  applicationFee?: string | null;
+  platformCommission?: string | null;
+  agencyShare?: string | null;
+  paymentStatus?: string | null;
+  transactionId?: string | null;
+  paymentDetails?: any;
+  paidAt?: string | null;
   program: { id: string; name: string; degreeLevel: string } | null;
   university: { id: string; name: string; country: string; logoUrl: string | null } | null;
   documents: {
@@ -42,12 +51,15 @@ interface ApplicationDetail {
 }
 
 export default function ApplicationDetailPage() {
+  const { user } = useAuth();
   const params = useParams();
   const applicationId = params.id as string;
   const [app, setApp] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [uploadNotes, setUploadNotes] = useState("");
   const [docLoadingId, setDocLoadingId] = useState<string | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   function load() {
     api
@@ -341,6 +353,43 @@ export default function ApplicationDetailPage() {
                 </section>
               )}
 
+              {/* Payment Receipt Voucher Card (for Paid Applications) */}
+              {app.paymentStatus === "paid" && (
+                <section className="bg-white rounded-[24px] p-6 occlusion-shadow border-l-4 border-emerald-500">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                        <span className="material-symbols-outlined text-[28px]">receipt_long</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-on-surface text-body-lg">
+                            Application Fee Receipt
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                            <span className="material-symbols-outlined text-[13px]">verified</span>
+                            ৳{Number(app.applicationFee || 3000).toLocaleString()} BDT Paid
+                          </span>
+                        </div>
+                        <p className="text-sm text-on-surface-variant mt-0.5">
+                          Trx ID: <span className="font-mono font-semibold text-primary">{app.transactionId || "TXN_APP_RECORD"}</span>
+                          {app.paymentDetails?.paymentMethod ? ` • via ${app.paymentDetails.paymentMethod}` : ""}
+                          {app.paidAt ? ` • ${new Date(app.paidAt).toLocaleDateString()}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowReceiptModal(true)}
+                      className="px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center gap-2 hover:opacity-90 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span className="material-symbols-outlined text-sm">download</span>
+                      Download Payment Receipt
+                    </button>
+                  </div>
+                </section>
+              )}
+
               {/* Direct Application (Self-Managed) Card */}
               {!app.agency && (
                 <section className="bg-white rounded-[24px] p-6 occlusion-shadow border-l-4 border-primary">
@@ -479,6 +528,30 @@ export default function ApplicationDetailPage() {
           )}
         </div>
       </main>
+
+      {/* Payment Receipt Modal */}
+      <PaymentReceiptModal
+        receipt={
+          showReceiptModal && app
+            ? {
+                transactionId: app.transactionId,
+                studentName: user?.fullName || "Student",
+                studentEmail: user?.email || "",
+                agencyName: app.agency?.companyName || "Assigned Agency",
+                programName: app.program?.name || "",
+                universityName: app.university?.name || "",
+                applicationFee: app.applicationFee || 3000,
+                paymentMethod: app.paymentDetails?.paymentMethod || "SSLCommerz",
+                accountNumber: app.paymentDetails?.accountNumber,
+                bankName: app.paymentDetails?.bankName,
+                paidAt: app.paidAt,
+                status: app.paymentStatus,
+              }
+            : null
+        }
+        onClose={() => setShowReceiptModal(false)}
+        showCommissionSplit={false}
+      />
     </>
   );
 }

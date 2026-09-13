@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api";
 import { ApplicationStatus } from "@/lib/types";
 import { ApplicationStatusBadge } from "@/components/applications/ApplicationStatusBadge";
 import AgencyNotificationBell from "@/components/agency/AgencyNotificationBell";
+import PaymentReceiptModal, { ReceiptData } from "@/components/applications/PaymentReceiptModal";
 
 interface AgencyApplication {
   id: string;
@@ -81,8 +82,46 @@ export default function AgencyApplicationsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successNotice, setSuccessNotice] = useState("");
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function exportApplicationsCsv() {
+    if (applications.length === 0) return;
+    const header = [
+      "Student Name",
+      "Student Email",
+      "Program",
+      "University",
+      "Admission Status",
+      "Payment Status",
+      "Application Fee (BDT)",
+      "Agency Share 90% (BDT)",
+      "Counselor Notes",
+      "Applied Date",
+    ];
+    const rows = applications.map((a) => [
+      a.studentName,
+      a.studentEmail,
+      a.programName,
+      a.universityName,
+      a.status,
+      a.paymentStatus || "unpaid",
+      a.applicationFee || "0.00",
+      a.agencyShare || "0.00",
+      a.agencyNotes || "",
+      new Date(a.createdAt).toLocaleDateString(),
+    ]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `studybridge-agency-applications-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   function load() {
     setLoading(true);
@@ -215,12 +254,22 @@ export default function AgencyApplicationsPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
           <div>
             <h2 className="font-headline-lg text-headline-lg text-primary mb-1">
-              Applications & University Processing
+              Applications &amp; University Processing
             </h2>
             <p className="font-body-lg text-body-lg text-on-surface-variant">
               Track student applications, submit to universities, provide counselor notes, and attach official offer letters.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={exportApplicationsCsv}
+            disabled={applications.length === 0}
+            className="px-4 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center gap-2 hover:opacity-90 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+            title="Download Application &amp; Fee Report as CSV"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Download Report (CSV)
+          </button>
         </div>
 
         {successNotice && (
@@ -348,14 +397,41 @@ export default function AgencyApplicationsPage() {
                         )}
                       </td>
                       <td className="py-5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openStatusModal(a)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs hover:opacity-90 transition-all shadow-xs cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                          Update & Attach
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {a.paymentStatus === "paid" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedReceipt({
+                                  transactionId: a.id,
+                                  studentName: a.studentName,
+                                  studentEmail: a.studentEmail,
+                                  agencyName: user?.fullName || "Agency Partner",
+                                  programName: a.programName,
+                                  universityName: a.universityName,
+                                  applicationFee: a.applicationFee || 3000,
+                                  agencyShare: a.agencyShare || 2700,
+                                  platformCommission: 300,
+                                  paidAt: a.paidAt || a.createdAt,
+                                  status: a.paymentStatus,
+                                })
+                              }
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-primary font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                              title="View and download payment voucher"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">receipt_long</span>
+                              Receipt
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openStatusModal(a)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs hover:opacity-90 transition-all shadow-xs cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                            Update & Attach
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -560,6 +636,12 @@ export default function AgencyApplicationsPage() {
           </div>
         </div>
       )}
+      {/* Payment Receipt Voucher Modal */}
+      <PaymentReceiptModal
+        receipt={selectedReceipt}
+        onClose={() => setSelectedReceipt(null)}
+        showCommissionSplit={true}
+      />
     </>
   );
 }
